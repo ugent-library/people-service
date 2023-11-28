@@ -431,7 +431,13 @@ components:
         date_updated:
           type: string
           format: date-time
-      required: [id]
+        from:
+          type: string
+          format: date-time
+        until:
+          type: string
+          format: date-time
+      required: [id, from]
 
     Organization:
       type: object
@@ -505,7 +511,7 @@ components:
           items:
             type: string
             minLength: 1
-            pattern: "^urn:(orcid|gismo_id|ugent_id|historic_ugent_id|ugent_barcode|ugent_username|ugent_memorialis_id):.+"
+            pattern: "^urn:(orcid|gismo_id|ugent_id|historic_ugent_id|ugent_barcode|ugent_username|ugent_memorialis_id|biblio_id):.+"
       required: [id]
 
     GetPeopleRequest:

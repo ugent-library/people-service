@@ -109,7 +109,7 @@ func (s *GetPeopleByIdRequest) Validate() error {
 					MaxLengthSet: false,
 					Email:        false,
 					Hostname:     false,
-					Regex:        regexMap["^urn:(orcid|gismo_id|ugent_id|historic_ugent_id|ugent_barcode|ugent_username|ugent_memorialis_id):[^\r\n\u2028\u2029]+"],
+					Regex:        regexMap["^urn:(orcid|gismo_id|ugent_id|historic_ugent_id|ugent_barcode|ugent_username|ugent_memorialis_id|biblio_id):[^\r\n\u2028\u2029]+"],
 				}).Validate(string(elem)); err != nil {
 					return errors.Wrap(err, "string")
 				}

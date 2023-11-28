@@ -522,6 +522,8 @@ type OrganizationParent struct {
 	ID          string      `json:"id"`
 	DateCreated OptDateTime `json:"date_created"`
 	DateUpdated OptDateTime `json:"date_updated"`
+	From        time.Time   `json:"from"`
+	Until       OptDateTime `json:"until"`
 }
 
 // GetID returns the value of ID.
@@ -539,6 +541,16 @@ func (s *OrganizationParent) GetDateUpdated() OptDateTime {
 	return s.DateUpdated
 }
 
+// GetFrom returns the value of From.
+func (s *OrganizationParent) GetFrom() time.Time {
+	return s.From
+}
+
+// GetUntil returns the value of Until.
+func (s *OrganizationParent) GetUntil() OptDateTime {
+	return s.Until
+}
+
 // SetID sets the value of ID.
 func (s *OrganizationParent) SetID(val string) {
 	s.ID = val
@@ -552,6 +564,16 @@ func (s *OrganizationParent) SetDateCreated(val OptDateTime) {
 // SetDateUpdated sets the value of DateUpdated.
 func (s *OrganizationParent) SetDateUpdated(val OptDateTime) {
 	s.DateUpdated = val
+}
+
+// SetFrom sets the value of From.
+func (s *OrganizationParent) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetUntil sets the value of Until.
+func (s *OrganizationParent) SetUntil(val OptDateTime) {
+	s.Until = val
 }
 
 // Ref: #/components/schemas/Person

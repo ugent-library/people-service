@@ -102,3 +102,50 @@ func toJSON(val any) []byte {
 	bytes, _ := json.Marshal(val)
 	return bytes
 }
+
+func vacuum(values []string) []string {
+	newValues := make([]string, 0, len(values))
+	for _, val := range values {
+		if val != "" {
+			newValues = append(newValues, val)
+		}
+	}
+	return newValues
+}
+
+func fromNullStringArray(data []byte) ([]string, error) {
+	if data == nil {
+		return nil, nil
+	}
+	values := []string{}
+	if err := json.Unmarshal(data, &values); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func fromNullMap(data []byte) (map[string]string, error) {
+	if data == nil {
+		return nil, nil
+	}
+	m := map[string]string{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func nullString(val string) pgtype.Text {
+	if val == "" {
+		return pgtype.Text{String: val, Status: pgtype.Null}
+	}
+	return pgtype.Text{String: val, Status: pgtype.Present}
+}
+
+func nullJSON(val any) pgtype.JSONB {
+	bytes, _ := json.Marshal(val)
+	if bytes == nil {
+		return pgtype.JSONB{Bytes: bytes, Status: pgtype.Null}
+	}
+	return pgtype.JSONB{Bytes: bytes, Status: pgtype.Present}
+}

@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/jackc/pgtype"
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
 	"github.com/ugent-library/crypt"
@@ -36,6 +36,8 @@ type organizationParent struct {
 	id                           int
 	dateCreated                  *time.Time
 	dateUpdated                  *time.Time
+	from                         *time.Time
+	until                        *time.Time
 	organizationID               int
 	parentOrganizationID         int
 	parentOrganizationExternalID string
@@ -62,6 +64,39 @@ type personIdentifier struct {
 	value    string
 }
 
+type organization struct {
+	id          int
+	externalID  pgtype.Text
+	dateCreated pgtype.Timestamptz
+	dateUpdated pgtype.Timestamptz
+	Type        pgtype.Text
+	nameDut     pgtype.Text
+	nameEng     pgtype.Text
+	acronym     pgtype.Text
+}
+
+type person struct {
+	id                  int
+	token               pgtype.JSONB
+	externalID          pgtype.Text
+	active              pgtype.Bool
+	dateCreated         pgtype.Timestamptz
+	dateUpdated         pgtype.Timestamptz
+	name                pgtype.Text
+	givenName           pgtype.Text
+	familyName          pgtype.Text
+	email               pgtype.Text
+	preferredGivenName  pgtype.Text
+	preferredFamilyName pgtype.Text
+	birthDate           pgtype.Text
+	honorificPrefix     pgtype.Text
+	jobCategory         pgtype.JSONB
+	role                pgtype.JSONB
+	settings            pgtype.JSONB
+	objectClass         pgtype.JSONB
+	expirationDate      pgtype.Text
+}
+
 func NewRepository(config *Config) (*repository, error) {
 	client, err := openClient(config.DbUrl)
 	if err != nil {
@@ -73,12 +108,15 @@ func NewRepository(config *Config) (*repository, error) {
 	}, nil
 }
 
-func (repo *repository) getOrganizationIdentifiers(ctx context.Context, ids ...int) ([]*organizationIdentifier, error) {
-	query := `SELECT "id", "organization_id", "value" FROM "organization_identifiers" WHERE "organization_id" = any($1)`
+func (repo *repository) getOrganizationIdentifiers(ctx context.Context, organizationIDs ...int) ([]*organizationIdentifier, error) {
+	query := `
+SELECT
+	"id", "organization_id", "value" FROM "organization_identifiers"
+WHERE "organization_id" = any($1) ORDER BY array_position($1, organization_id), "value" ASC`
 	rows, err := repo.client.QueryContext(
 		ctx,
 		query,
-		pgIntArray(ids),
+		pgIntArray(organizationIDs),
 	)
 	if err != nil {
 		return nil, err
@@ -99,21 +137,26 @@ func (repo *repository) getOrganizationIdentifiers(ctx context.Context, ids ...i
 		}
 		organizationIdentifiers = append(organizationIdentifiers, oid)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return organizationIdentifiers, nil
 }
 
-func (repo *repository) getPersonIdentifiers(ctx context.Context, ids ...int) ([]*personIdentifier, error) {
-	query := `SELECT "id", "person_id", "value" FROM "person_identifiers" WHERE "person_id" = any($1)`
+func (repo *repository) getPersonIdentifiers(ctx context.Context, personIDs ...int) ([]*personIdentifier, error) {
+	query := `
+SELECT
+	"id", "person_id", "value" FROM "person_identifiers"
+WHERE "person_id" = any($1) ORDER BY array_position($1, person_id), "value" ASC`
 	rows, err := repo.client.QueryContext(
 		ctx,
 		query,
-		pgIntArray(ids),
+		pgIntArray(personIDs),
 	)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
 	pids := []*personIdentifier{}
@@ -129,11 +172,14 @@ func (repo *repository) getPersonIdentifiers(ctx context.Context, ids ...int) ([
 		}
 		pids = append(pids, pid)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return pids, nil
 }
 
-func (repo *repository) getOrganizationMembers(ctx context.Context, ids ...int) ([]organizationMember, error) {
+func (repo *repository) getOrganizationMembers(ctx context.Context, personIDs ...int) ([]*organizationMember, error) {
 	query := `
 SELECT
 	"id",
@@ -144,12 +190,12 @@ SELECT
 	(SELECT "external_id" FROM "organizations" WHERE "id" = op.organization_id) AS "organization_external_id"
 FROM "organization_members" op
 WHERE "person_id" = any($1)
-ORDER by "organization_id" ASC
+ORDER BY array_position($1, person_id), "organization_id" ASC
 	`
 	rows, err := repo.client.QueryContext(
 		ctx,
 		query,
-		pgIntArray(ids),
+		pgIntArray(personIDs),
 	)
 	if err != nil {
 		return nil, err
@@ -157,10 +203,10 @@ ORDER by "organization_id" ASC
 
 	defer rows.Close()
 
-	organizationMembers := []organizationMember{}
+	organizationMembers := []*organizationMember{}
 
 	for rows.Next() {
-		om := organizationMember{}
+		om := &organizationMember{}
 		err := rows.Scan(
 			&om.id,
 			&om.organizationID,
@@ -177,11 +223,14 @@ ORDER by "organization_id" ASC
 		}
 		organizationMembers = append(organizationMembers, om)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return organizationMembers, nil
 }
 
-func (repo *repository) getOrganizationParents(ctx context.Context, ids ...int) ([]organizationParent, error) {
+func (repo *repository) getOrganizationParents(ctx context.Context, organizationIDs ...int) ([]*organizationParent, error) {
 	query := `
 SELECT
 	"id",
@@ -189,15 +238,17 @@ SELECT
     "parent_organization_id",
 	"date_created",
 	"date_updated",
+	"from",
+	"until",
 	(SELECT "external_id" FROM "organizations" WHERE "id" = op.parent_organization_id) AS "parent_organization_external_id"
 FROM "organization_parents" op
 WHERE "organization_id" = any($1)
-ORDER by "parent_organization_id" ASC
+ORDER by array_position($1, organization_id), "parent_organization_id" ASC
 	`
 	rows, err := repo.client.QueryContext(
 		ctx,
 		query,
-		pgIntArray(ids),
+		pgIntArray(organizationIDs),
 	)
 	if err != nil {
 		return nil, err
@@ -205,16 +256,18 @@ ORDER by "parent_organization_id" ASC
 
 	defer rows.Close()
 
-	organizationParents := []organizationParent{}
+	organizationParents := []*organizationParent{}
 
 	for rows.Next() {
-		op := organizationParent{}
+		op := &organizationParent{}
 		err := rows.Scan(
 			&op.id,
 			&op.organizationID,
 			&op.parentOrganizationID,
 			&op.dateCreated,
 			&op.dateUpdated,
+			&op.from,
+			&op.until,
 			&op.parentOrganizationExternalID,
 		)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -225,11 +278,14 @@ ORDER by "parent_organization_id" ASC
 		}
 		organizationParents = append(organizationParents, op)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return organizationParents, nil
 }
 
-func (repo *repository) GetOrganization(ctx context.Context, id string) (*models.Organization, error) {
+func (repo *repository) GetOrganization(ctx context.Context, externalId string) (*models.Organization, error) {
 	query := `
 SELECT 
 	"id", 
@@ -242,62 +298,50 @@ SELECT
 	"type"
 FROM organizations WHERE external_id = $1 LIMIT 1`
 
-	org := &models.Organization{}
-	var rowID int
-	err := repo.client.QueryRowContext(ctx, query, id).Scan(
-		&rowID,
-		&org.ID,
-		&org.DateCreated,
-		&org.DateUpdated,
-		&org.NameDut,
-		&org.NameEng,
-		&org.Acronym,
-		&org.Type,
+	orgRec := &organization{}
+	err := repo.client.QueryRowContext(ctx, query, externalId).Scan(
+		&orgRec.id,
+		&orgRec.externalID,
+		&orgRec.dateCreated,
+		&orgRec.dateUpdated,
+		&orgRec.nameDut,
+		&orgRec.nameEng,
+		&orgRec.acronym,
+		&orgRec.Type,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, models.ErrNotFound
 	}
 
-	organizationParents, err := repo.getOrganizationParents(ctx, rowID)
+	orgs, err := repo.unpackOrganizations(ctx, orgRec)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, op := range organizationParents {
-		org.Parent = append(org.Parent, &models.OrganizationParent{
-			ID:          op.parentOrganizationExternalID,
-			DateCreated: op.dateCreated,
-			DateUpdated: op.dateUpdated,
-		})
-	}
-
-	oids, err := repo.getOrganizationIdentifiers(ctx, rowID)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, oid := range oids {
-		urn, _ := models.ParseURN(oid.value)
-		org.AddIdentifier(urn)
-	}
-
-	return org, nil
+	return orgs[0], nil
 }
 
-func (repo *repository) GetOrganizationsByIdentifier(ctx context.Context, urns ...models.URN) ([]*models.Organization, error) {
+func (repo *repository) GetOrganizationsByIdentifier(ctx context.Context, urns ...*models.URN) ([]*models.Organization, error) {
 	urnValues := make([]string, 0, len(urns))
 	for _, urn := range urns {
 		urnValues = append(urnValues, urn.String())
 	}
 
-	orgs := []*models.Organization{}
-	rowIDS := []int{}
+	orgRecs := []*organization{}
 
 	query := `
-	SELECT "id", "external_id", "date_created", "date_updated", "type", "name_dut", "name_eng", "acronym"
-	FROM "organizations" WHERE "id" IN (
-		SELECT "organization_id" FROM "organization_identifiers" WHERE "value" = any($1)
-	)
+SELECT 
+	"id", 
+	"external_id", 
+	"date_created", 
+	"date_updated", 
+	"type", 
+	"name_dut", 
+	"name_eng", 
+	"acronym"
+FROM "organizations" WHERE "id" IN (
+	SELECT "organization_id" FROM "organization_identifiers" WHERE "value" = any($1)
+)
 	`
 
 	rows, err := repo.client.QueryContext(ctx, query, pgTextArray(urnValues))
@@ -307,17 +351,16 @@ func (repo *repository) GetOrganizationsByIdentifier(ctx context.Context, urns .
 	defer rows.Close()
 
 	for rows.Next() {
-		var rowID int
-		org := &models.Organization{}
+		orgRec := &organization{}
 		err = rows.Scan(
-			&rowID,
-			&org.ID,
-			&org.DateCreated,
-			&org.DateUpdated,
-			&org.Type,
-			&org.NameDut,
-			&org.NameEng,
-			&org.Acronym,
+			&orgRec.id,
+			&orgRec.externalID,
+			&orgRec.dateCreated,
+			&orgRec.dateUpdated,
+			&orgRec.Type,
+			&orgRec.nameDut,
+			&orgRec.nameEng,
+			&orgRec.acronym,
 		)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -325,50 +368,83 @@ func (repo *repository) GetOrganizationsByIdentifier(ctx context.Context, urns .
 		if err != nil {
 			return nil, err
 		}
-		rowIDS = append(rowIDS, rowID)
-		orgs = append(orgs, org)
+		orgRecs = append(orgRecs, orgRec)
 	}
 
-	if len(orgs) == 0 {
-		return orgs, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
-	allOrganizationParents, err := repo.getOrganizationParents(ctx, rowIDS...)
+	if len(orgRecs) == 0 {
+		return nil, nil
+	}
+
+	orgs, err := repo.unpackOrganizations(ctx, orgRecs...)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(orgs); i++ {
-		rowID := rowIDS[i]
+	return orgs, nil
+}
+
+func (repo *repository) unpackOrganizations(ctx context.Context, orgRecs ...*organization) ([]*models.Organization, error) {
+	orgs := make([]*models.Organization, 0, len(orgRecs))
+
+	if len(orgRecs) == 0 {
+		return orgs, nil
+	}
+
+	rowIDs := make([]int, 0, len(orgRecs))
+	for _, orgRec := range orgRecs {
+		rowIDs = append(rowIDs, orgRec.id)
+		orgs = append(orgs, &models.Organization{
+			ID:          orgRec.externalID.String,
+			DateCreated: &orgRec.dateCreated.Time,
+			DateUpdated: &orgRec.dateUpdated.Time,
+			Type:        orgRec.Type.String,
+			NameDut:     orgRec.nameDut.String,
+			NameEng:     orgRec.nameEng.String,
+			Acronym:     orgRec.acronym.String,
+		})
+	}
+
+	allOrganizationParents, err := repo.getOrganizationParents(ctx, rowIDs...)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(orgRecs); i++ {
+		orgRec := orgRecs[i]
 		org := orgs[i]
 		for _, op := range allOrganizationParents {
-			if op.organizationID == rowID {
+			if op.organizationID == orgRec.id {
 				org.AddParent(&models.OrganizationParent{
 					ID:          op.parentOrganizationExternalID,
 					DateCreated: op.dateCreated,
 					DateUpdated: op.dateUpdated,
+					From:        op.from,
+					Until:       op.until,
 				})
 			}
 		}
 	}
 
-	allOrganizationIdentifiers, err := repo.getOrganizationIdentifiers(ctx, rowIDS...)
+	allOrganizationIdentifiers, err := repo.getOrganizationIdentifiers(ctx, rowIDs...)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(orgs); i++ {
-		rowID := rowIDS[i]
+	for i := 0; i < len(orgRecs); i++ {
+		orgRec := orgRecs[i]
 		org := orgs[i]
 		for _, oid := range allOrganizationIdentifiers {
-			if oid.organizationID == rowID {
+			if oid.organizationID == orgRec.id {
 				urn, _ := models.ParseURN(oid.value)
 				org.AddIdentifier(urn)
 			}
 		}
 	}
 
-	// TODO: order by array_position cannot work on array itself. Find another way
 	return orgs, nil
 }
 
@@ -389,6 +465,7 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 		parent.DateUpdated = &now
 	}
 
+	// start transaction
 	tx, err := repo.client.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
@@ -410,21 +487,20 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING "id"
 	`
-	tsVals := []string{}
-	tsVals = append(tsVals, org.NameDut, org.NameEng)
-	tsVals = append(tsVals, org.Acronym)
+	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
 	tsVals = append(tsVals, org.GetIdentifierValues()...)
+	tsVals = vacuum(tsVals)
 	var rowID int
 	err = tx.QueryRowContext(
 		ctx, query,
 		org.ID,
 		org.DateCreated,
 		org.DateUpdated,
-		org.NameDut,
-		org.NameEng,
+		nullString(org.NameDut),
+		nullString(org.NameEng),
 		org.Type,
-		org.Acronym,
-		toJSON(tsVals),
+		nullString(org.Acronym),
+		nullJSON(tsVals),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
@@ -438,7 +514,7 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	}
 	parentOrganizationExternalIds = lo.Uniq(parentOrganizationExternalIds)
 	query = `SELECT "id" FROM "organizations" WHERE "external_id" = any($1) ORDER BY array_position($1, external_id)`
-	parentRows, err := tx.QueryContext(
+	pRows, err := tx.QueryContext(
 		ctx,
 		query,
 		pgTextArray(parentOrganizationExternalIds),
@@ -446,25 +522,34 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	if err != nil {
 		return nil, err
 	}
-	defer parentRows.Close()
-	for parentRows.Next() {
+	defer pRows.Close()
+	for pRows.Next() {
 		var rowID int
-		parentRows.Scan(&rowID)
+		pRows.Scan(&rowID)
 		parentOrganizationIDs = append(parentOrganizationIDs, rowID)
 	}
+	parentOrganizationIDs = lo.Uniq(parentOrganizationIDs)
 	if len(parentOrganizationExternalIds) != len(parentOrganizationIDs) {
 		return nil, models.ErrInvalidReference
 	}
 	query = `
 INSERT INTO "organization_parents"
-	("organization_id", "parent_organization_id", "date_created", "date_updated")
-	VALUES($1, $2, $3, $4);
+	("organization_id", "parent_organization_id", "date_created", "date_updated", "from", "until")
+VALUES($1, $2, $3, $4, $5, $6);
 `
 	for i := 0; i < len(parentOrganizationIDs); i++ {
 		parentOrganizationID := parentOrganizationIDs[i]
 		orgParent := org.Parent[i]
-		fmt.Fprintf(os.Stderr, "parent org: %+v\n", orgParent)
-		_, err := tx.ExecContext(ctx, query, rowID, parentOrganizationID, orgParent.DateCreated, orgParent.DateUpdated)
+		_, err := tx.ExecContext(
+			ctx,
+			query,
+			rowID,
+			parentOrganizationID,
+			orgParent.DateCreated,
+			orgParent.DateUpdated,
+			orgParent.From,
+			orgParent.Until,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -472,7 +557,8 @@ INSERT INTO "organization_parents"
 
 	// add identifiers
 	query = `
-INSERT INTO "organization_identifiers"("organization_id", "date_created", "date_updated", "value")
+INSERT INTO "organization_identifiers"
+	("organization_id", "date_created", "date_updated", "value")
 VALUES($1, $2, $3, $4)
 	`
 	for _, urn := range org.Identifier {
@@ -507,10 +593,9 @@ func (repo *repository) UpdateOrganization(ctx context.Context, org *models.Orga
 	defer tx.Rollback()
 
 	// update organization
-	tsVals := []string{}
-	tsVals = append(tsVals, org.NameDut, org.NameEng)
-	tsVals = append(tsVals, org.Acronym)
+	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
 	tsVals = append(tsVals, org.GetIdentifierValues()...)
+	tsVals = vacuum(tsVals)
 
 	query := `
 UPDATE "organizations"
@@ -530,16 +615,15 @@ RETURNING "id"
 		query,
 		org.ID,
 		now,
-		org.NameDut,
-		org.NameEng,
+		nullString(org.NameDut),
+		nullString(org.NameEng),
 		org.Type,
-		org.Acronym,
-		toJSON(tsVals),
+		nullString(org.Acronym),
+		nullJSON(tsVals),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
 	}
-
 	// update organization parents
 	var newOrganizationParents []organizationParent
 	if len(org.Parent) > 0 {
@@ -552,15 +636,16 @@ RETURNING "id"
 		parentOrganizationExternalIDs = lo.Uniq(parentOrganizationExternalIDs)
 
 		pgExternalIds := pgTextArray(parentOrganizationExternalIDs)
-		rows, err := tx.QueryContext(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1) ORDER BY array_position($1, external_id)", pgExternalIds)
+		pRows, err := tx.QueryContext(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1) ORDER BY array_position($1, external_id)", pgExternalIds)
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
-		for rows.Next() {
+		defer pRows.Close()
+
+		for pRows.Next() {
 			var parentID int
 			var parentExternalID string
-			err = rows.Scan(&parentID, &parentExternalID)
+			err = pRows.Scan(&parentID, &parentExternalID)
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, models.ErrInvalidReference
 			}
@@ -573,6 +658,10 @@ RETURNING "id"
 				parentOrganizationExternalID: parentExternalID,
 			})
 		}
+		if err := pRows.Err(); err != nil {
+			return nil, err
+		}
+
 		if len(parentOrganizationExternalIDs) != len(organizationParents) {
 			return nil, models.ErrInvalidReference
 		}
@@ -582,6 +671,8 @@ RETURNING "id"
 				organizationID: rowID,
 				dateCreated:    parent.DateCreated,
 				dateUpdated:    parent.DateUpdated,
+				from:           parent.From,
+				until:          parent.Until,
 			}
 			for _, op := range organizationParents {
 				if op.parentOrganizationExternalID == parent.ID {
@@ -595,17 +686,27 @@ RETURNING "id"
 
 	updatedRelIds := []int{}
 	query = `
-INSERT INTO "organization_parents"("organization_id", "parent_organization_id", "date_created", "date_updated")
-VALUES($1, $2, $3, $4)
-ON CONFLICT("organization_id", "parent_organization_id")
-DO UPDATE SET date_updated = EXCLUDED.date_updated
+INSERT INTO "organization_parents"
+	("organization_id", "parent_organization_id", "date_created", "date_updated", "from", "until")
+VALUES($1, $2, $3, $4, $5, $6)
+ON CONFLICT("organization_id", "parent_organization_id", "from")
+DO UPDATE SET date_updated = EXCLUDED.date_updated, until = EXCLUDED.until
 RETURNING "id"
 	`
 
 	if len(newOrganizationParents) > 0 {
 		for _, newOrganizationParent := range newOrganizationParents {
 			var relId int
-			err = tx.QueryRowContext(ctx, query, rowID, newOrganizationParent.parentOrganizationID, newOrganizationParent.dateCreated, newOrganizationParent.dateUpdated).Scan(&relId)
+			err = tx.QueryRowContext(
+				ctx,
+				query,
+				rowID,
+				newOrganizationParent.parentOrganizationID,
+				newOrganizationParent.dateCreated,
+				newOrganizationParent.dateUpdated,
+				newOrganizationParent.from,
+				newOrganizationParent.until,
+			).Scan(&relId)
 			if err != nil {
 				return nil, err
 			}
@@ -627,7 +728,7 @@ RETURNING "id"
 		query = `
 INSERT INTO "organization_identifiers"("organization_id", "value", "date_created", "date_updated")
 VALUES($1, $2, $3, $4)
-ON CONFLICT("value")
+ON CONFLICT("organization_id", "value")
 DO UPDATE SET date_updated = EXCLUDED.date_updated
 RETURNING "id"
 `
@@ -700,21 +801,19 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 	}
 	defer rows.Close()
 
-	orgRowIDs := []int{}
-	orgs := []*models.Organization{}
+	orgRecs := []*organization{}
 
 	for rows.Next() {
-		var rowID int
-		org := &models.Organization{}
+		orgRec := &organization{}
 		err = rows.Scan(
-			&rowID,
-			&org.ID,
-			&org.DateCreated,
-			&org.DateUpdated,
-			&org.Type,
-			&org.NameDut,
-			&org.NameEng,
-			&org.Acronym,
+			&orgRec.id,
+			&orgRec.externalID,
+			&orgRec.dateCreated,
+			&orgRec.dateUpdated,
+			&orgRec.Type,
+			&orgRec.nameDut,
+			&orgRec.nameEng,
+			&orgRec.acronym,
 		)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -722,47 +821,20 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 		if err != nil {
 			return nil, err
 		}
-		orgRowIDs = append(orgRowIDs, rowID)
-		orgs = append(orgs, org)
+		orgRecs = append(orgRecs, orgRec)
 	}
 
-	if len(orgs) == 0 {
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(orgRecs) == 0 {
 		return nil, nil
 	}
 
-	allOrganizationParents, err := repo.getOrganizationParents(ctx, orgRowIDs...)
+	orgs, err := repo.unpackOrganizations(ctx, orgRecs...)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := 0; i < len(orgs); i++ {
-		org := orgs[i]
-		orgRowID := orgRowIDs[i]
-		for _, op := range allOrganizationParents {
-			if op.organizationID == orgRowID {
-				org.AddParent(&models.OrganizationParent{
-					ID:          op.parentOrganizationExternalID,
-					DateCreated: op.dateCreated,
-					DateUpdated: op.dateUpdated,
-				})
-			}
-		}
-	}
-
-	allOrganizationIdentifiers, err := repo.getOrganizationIdentifiers(ctx, orgRowIDs...)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < len(orgs); i++ {
-		org := orgs[i]
-		orgRowID := orgRowIDs[i]
-		for _, orgIdentifier := range allOrganizationIdentifiers {
-			if orgIdentifier.organizationID == orgRowID {
-				urn, _ := models.ParseURN(orgIdentifier.value)
-				org.AddIdentifier(urn)
-			}
-		}
 	}
 
 	return orgs, nil
@@ -820,28 +892,26 @@ SELECT
 	"name_eng", 
 	"acronym"
 FROM "organizations"
-WHERE "id" > $1 ORDER BY "id" ASC LIMIT ` + fmt.Sprintf("%d", organizationPageLimit)
+WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 
-	rows, err := repo.client.QueryContext(ctx, query, cursor.LastID)
+	rows, err := repo.client.QueryContext(ctx, query, cursor.LastID, organizationPageLimit)
 	if err != nil {
 		return nil, newCursor, err
 	}
 	defer rows.Close()
 
-	orgRowIDs := []int{}
-	orgs := []*models.Organization{}
+	orgRecs := []*organization{}
 	for rows.Next() {
-		var rowID int
-		org := &models.Organization{}
+		orgRec := &organization{}
 		err = rows.Scan(
-			&rowID,
-			&org.ID,
-			&org.DateCreated,
-			&org.DateUpdated,
-			&org.Type,
-			&org.NameDut,
-			&org.NameEng,
-			&org.Acronym,
+			&orgRec.id,
+			&orgRec.externalID,
+			&orgRec.dateCreated,
+			&orgRec.dateUpdated,
+			&orgRec.Type,
+			&orgRec.nameDut,
+			&orgRec.nameEng,
+			&orgRec.acronym,
 		)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, newCursor, nil
@@ -849,10 +919,14 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT ` + fmt.Sprintf("%d", organizationPageLi
 		if err != nil {
 			return nil, newCursor, err
 		}
-		orgRowIDs = append(orgRowIDs, rowID)
-		orgs = append(orgs, org)
+		orgRecs = append(orgRecs, orgRec)
 	}
-	if len(orgs) == 0 {
+
+	if err := rows.Err(); err != nil {
+		return nil, newCursor, err
+	}
+
+	if len(orgRecs) == 0 {
 		return nil, newCursor, nil
 	}
 
@@ -863,45 +937,15 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT ` + fmt.Sprintf("%d", organizationPageLi
 		return nil, newCursor, err
 	}
 
-	// attach organization parents
-	allOrganizationParents, err := repo.getOrganizationParents(ctx, orgRowIDs...)
+	orgs, err := repo.unpackOrganizations(ctx, orgRecs...)
 	if err != nil {
 		return nil, newCursor, err
 	}
-	for i := 0; i < len(orgRowIDs); i++ {
-		rowID := orgRowIDs[i]
-		org := orgs[i]
-		for _, op := range allOrganizationParents {
-			if op.organizationID == rowID {
-				org.AddParent(&models.OrganizationParent{
-					ID:          op.parentOrganizationExternalID,
-					DateCreated: op.dateCreated,
-					DateUpdated: op.dateUpdated,
-				})
-			}
-		}
-	}
-
-	// attach identifiers
-	allOrganizationIdentifiers, err := repo.getOrganizationIdentifiers(ctx, orgRowIDs...)
-	if err != nil {
-		return nil, setCursor{}, err
-	}
-	for i := 0; i < len(orgRowIDs); i++ {
-		rowID := orgRowIDs[i]
-		org := orgs[i]
-		for _, oid := range allOrganizationIdentifiers {
-			if oid.organizationID == rowID {
-				urn, _ := models.ParseURN(oid.value)
-				org.AddIdentifier(urn)
-			}
-		}
-	}
 
 	// set next cursor
-	if total > len(orgRowIDs) {
+	if total > len(orgRecs) {
 		newCursor = setCursor{
-			LastID: orgRowIDs[len(orgRowIDs)-1],
+			LastID: orgRecs[len(orgRecs)-1].id,
 		}
 	}
 
@@ -979,24 +1023,25 @@ INSERT INTO "people"
 	RETURNING "id"
 	`
 	var rowID int
-	queryArgs := []any{}
-	queryArgs = append(queryArgs, p.ID)
-	queryArgs = append(queryArgs, p.DateCreated)
-	queryArgs = append(queryArgs, p.DateUpdated)
-	queryArgs = append(queryArgs, p.Active)
-	queryArgs = append(queryArgs, p.BirthDate)
-	queryArgs = append(queryArgs, p.JobCategory)
-	queryArgs = append(queryArgs, p.Email)
-	queryArgs = append(queryArgs, p.GivenName)
-	queryArgs = append(queryArgs, p.PreferredGivenName)
-	queryArgs = append(queryArgs, p.Name)
-	queryArgs = append(queryArgs, p.FamilyName)
-	queryArgs = append(queryArgs, p.PreferredFamilyName)
-	queryArgs = append(queryArgs, p.HonorificPrefix)
-	queryArgs = append(queryArgs, toJSON(p.Role))
-	queryArgs = append(queryArgs, toJSON(p.Settings))
-	queryArgs = append(queryArgs, toJSON(p.ObjectClass))
-	queryArgs = append(queryArgs, p.ExpirationDate)
+	queryArgs := []any{
+		p.ID,
+		p.DateCreated,
+		p.DateUpdated,
+		p.Active,
+		nullString(p.BirthDate),
+		nullJSON(p.JobCategory),
+		nullString(p.Email),
+		nullString(p.GivenName),
+		nullString(p.PreferredGivenName),
+		nullString(p.Name),
+		nullString(p.FamilyName),
+		nullString(p.PreferredFamilyName),
+		nullString(p.HonorificPrefix),
+		nullJSON(p.Role),
+		nullJSON(p.Settings),
+		nullJSON(p.ObjectClass),
+		nullString(p.ExpirationDate),
+	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
 		eToken, err := encryptMessage(repo.secret, token.Value)
@@ -1006,12 +1051,10 @@ INSERT INTO "people"
 		eURN := models.NewURN(token.Namespace, eToken)
 		tokens = append(tokens, eURN.String())
 	}
-	queryArgs = append(queryArgs, toJSON(tokens))
-	tsVals := []string{}
-	if p.Name != "" {
-		tsVals = append(tsVals, p.Name)
-	}
-	queryArgs = append(queryArgs, toJSON(tsVals))
+	queryArgs = append(queryArgs,
+		nullJSON(tokens),
+		nullJSON(vacuum([]string{p.Name})),
+	)
 
 	err = tx.QueryRowContext(ctx, query, queryArgs...).Scan(&rowID)
 	if err != nil {
@@ -1045,6 +1088,9 @@ INSERT INTO "people"
 				return nil, err
 			}
 			orgRowIDS = append(orgRowIDS, rowID)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
 		}
 
 		if len(organizationExternalIDs) != len(orgRowIDS) {
@@ -1087,23 +1133,11 @@ func (repo *repository) SetPersonOrcid(ctx context.Context, id string, orcid str
 		return err
 	}
 
-	if orcid == "" {
-		newIdentifiers := make([]*models.URN, 0, len(person.Identifier))
-		for _, urn := range person.Identifier {
-			if urn.Namespace != "orcid" {
-				newIdentifiers = append(newIdentifiers, urn)
-			}
-		}
-		person.ClearIdentifier()
-		for _, urn := range newIdentifiers {
-			person.AddIdentifier(urn)
-		}
-	} else {
-		for _, urn := range person.Identifier {
-			if urn.Namespace == "orcid" {
-				urn.Value = orcid
-			}
-		}
+	person.Identifier = lo.Filter(person.Identifier, func(identifier *models.URN, idx int) bool {
+		return identifier.Namespace != "orcid"
+	})
+	if orcid != "" {
+		person.AddIdentifier(models.NewURN("orcid", orcid))
 	}
 
 	_, err = repo.UpdatePerson(ctx, person)
@@ -1118,12 +1152,10 @@ func (repo *repository) SetPersonOrcidToken(ctx context.Context, id string, orci
 		return err
 	}
 
-	if orcidToken == "" {
-		person.Token = lo.Filter(person.Token, func(token *models.URN, idx int) bool {
-			return token.Namespace != "orcid"
-		})
-	} else {
-		person.ClearToken()
+	person.Token = lo.Filter(person.Token, func(token *models.URN, idx int) bool {
+		return token.Namespace != "orcid"
+	})
+	if orcidToken != "" {
 		person.AddToken("orcid", orcidToken)
 	}
 
@@ -1173,22 +1205,23 @@ WHERE "external_id" = $18
 RETURNING "id"
 	`
 	var rowID int
-	queryArgs := []any{}
-	queryArgs = append(queryArgs, p.DateUpdated)
-	queryArgs = append(queryArgs, p.Active)
-	queryArgs = append(queryArgs, p.BirthDate)
-	queryArgs = append(queryArgs, p.JobCategory)
-	queryArgs = append(queryArgs, p.Email)
-	queryArgs = append(queryArgs, p.GivenName)
-	queryArgs = append(queryArgs, p.PreferredGivenName)
-	queryArgs = append(queryArgs, p.Name)
-	queryArgs = append(queryArgs, p.FamilyName)
-	queryArgs = append(queryArgs, p.PreferredFamilyName)
-	queryArgs = append(queryArgs, p.HonorificPrefix)
-	queryArgs = append(queryArgs, toJSON(p.Role))
-	queryArgs = append(queryArgs, toJSON(p.Settings))
-	queryArgs = append(queryArgs, toJSON(p.ObjectClass))
-	queryArgs = append(queryArgs, p.ExpirationDate)
+	queryArgs := []any{
+		p.DateUpdated,
+		p.Active,
+		nullString(p.BirthDate),
+		nullJSON(p.JobCategory),
+		nullString(p.Email),
+		nullString(p.GivenName),
+		nullString(p.PreferredGivenName),
+		nullString(p.Name),
+		nullString(p.FamilyName),
+		nullString(p.PreferredFamilyName),
+		nullString(p.HonorificPrefix),
+		nullJSON(p.Role),
+		nullJSON(p.Settings),
+		nullJSON(p.ObjectClass),
+		nullString(p.ExpirationDate),
+	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
 		eToken, err := encryptMessage(repo.secret, token.Value)
@@ -1198,13 +1231,11 @@ RETURNING "id"
 		eURN := models.NewURN(token.Namespace, eToken)
 		tokens = append(tokens, eURN.String())
 	}
-	queryArgs = append(queryArgs, toJSON(tokens))
-	tsVals := []string{}
-	if p.Name != "" {
-		tsVals = append(tsVals, p.Name)
-	}
-	queryArgs = append(queryArgs, toJSON(tsVals))
-	queryArgs = append(queryArgs, p.ID)
+	queryArgs = append(queryArgs,
+		nullJSON(tokens),
+		nullJSON(vacuum([]string{p.Name})),
+		p.ID,
+	)
 
 	err = tx.QueryRowContext(ctx, query, queryArgs...).Scan(&rowID)
 	if err != nil {
@@ -1271,15 +1302,15 @@ RETURNING "id"
 		return nil, err
 	}
 
-	// "organization_identifiers"
-	updatedOrganizationIdentifierIds := []int{}
+	// "person_identifiers"
+	updatedPersonIdentifierIds := []int{}
 	if len(p.Identifier) > 0 {
 		for _, urnValue := range p.GetIdentifierQualifiedValues() {
 			insertQuery := `
-			INSERT INTO "organization_identifiers"
+			INSERT INTO "person_identifiers"
 				("date_created", "date_updated", "person_id", "value")
 			VALUES($1, $2, $3, $4)
-			ON CONFLICT("value")
+			ON CONFLICT("person_id", "value")
 			DO UPDATE SET date_updated = EXCLUDED.date_updated
 			RETURNING "id"
 			`
@@ -1288,14 +1319,14 @@ RETURNING "id"
 			if err != nil {
 				return nil, err
 			}
-			updatedOrganizationIdentifierIds = append(updatedOrganizationIdentifierIds, relID)
+			updatedPersonIdentifierIds = append(updatedPersonIdentifierIds, relID)
 		}
 	}
-	query = `DELETE FROM "organization_identifiers" WHERE "person_id" = $1`
+	query = `DELETE FROM "person_identifiers" WHERE "person_id" = $1`
 	queryArgs = []any{rowID}
-	if len(updatedOrganizationMemberIds) > 0 {
+	if len(updatedPersonIdentifierIds) > 0 {
 		query += ` AND NOT "id" = any($2)`
-		queryArgs = append(queryArgs, pgIntArray(updatedOrganizationIdentifierIds))
+		queryArgs = append(queryArgs, pgIntArray(updatedPersonIdentifierIds))
 	}
 	_, err = tx.ExecContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -1309,7 +1340,7 @@ RETURNING "id"
 	return p, nil
 }
 
-func (repo *repository) GetPerson(ctx context.Context, id string) (*models.Person, error) {
+func (repo *repository) GetPerson(ctx context.Context, externalID string) (*models.Person, error) {
 	query := `
 SELECT
 	"id",
@@ -1335,29 +1366,27 @@ FROM "people" WHERE "external_id" = $1
 LIMIT 1
 	`
 
-	var rowID int
-	var encTokens []string
-	p := &models.Person{}
-	err := repo.client.QueryRowContext(ctx, query, id).Scan(
-		&rowID,
-		&p.DateCreated,
-		&p.DateUpdated,
-		&p.ID,
-		&p.Active,
-		&p.BirthDate,
-		&p.Email,
-		&p.GivenName,
-		&p.Name,
-		&p.FamilyName,
-		&p.JobCategory,
-		&p.PreferredGivenName,
-		&p.PreferredFamilyName,
-		&p.HonorificPrefix,
-		&p.Role,
-		&p.Settings,
-		&p.ObjectClass,
-		&p.ExpirationDate,
-		encTokens,
+	p := &person{}
+	err := repo.client.QueryRowContext(ctx, query, externalID).Scan(
+		&p.id,
+		&p.dateCreated,
+		&p.dateUpdated,
+		&p.externalID,
+		&p.active,
+		&p.birthDate,
+		&p.email,
+		&p.givenName,
+		&p.name,
+		&p.familyName,
+		&p.jobCategory,
+		&p.preferredGivenName,
+		&p.preferredFamilyName,
+		&p.honorificPrefix,
+		&p.role,
+		&p.settings,
+		&p.objectClass,
+		&p.expirationDate,
+		&p.token,
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -1367,36 +1396,15 @@ LIMIT 1
 		return nil, err
 	}
 
-	p.Token, err = repo.decryptTokens(encTokens)
+	people, err := repo.unpackPeople(ctx, p)
 	if err != nil {
 		return nil, err
 	}
 
-	personIdentifiers, err := repo.getPersonIdentifiers(ctx, rowID)
-	if err != nil {
-		return nil, err
-	}
-	for _, pid := range personIdentifiers {
-		urn, _ := models.ParseURN(pid.value)
-		p.AddIdentifier(urn)
-	}
-
-	orgMembers, err := repo.getOrganizationMembers(ctx, rowID)
-	if err != nil {
-		return nil, err
-	}
-	for _, orgMember := range orgMembers {
-		p.AddOrganizationMember(&models.OrganizationMember{
-			ID:          orgMember.organizationExternalID,
-			DateCreated: orgMember.dateCreated,
-			DateUpdated: orgMember.dateUpdated,
-		})
-	}
-
-	return p, nil
+	return people[0], nil
 }
 
-func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...models.URN) ([]*models.Person, error) {
+func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*models.URN) ([]*models.Person, error) {
 	query := `
 	SELECT
 		"id",
@@ -1432,59 +1440,120 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...model
 	}
 	defer rows.Close()
 
-	rowIDs := []int{}
-	people := []*models.Person{}
+	personRecs := []*person{}
 
 	for rows.Next() {
-		var rowID int
-		var encTokens []string
-		p := &models.Person{}
+		p := &person{}
 		err = rows.Scan(
-			&rowID,
-			&p.DateCreated,
-			&p.DateUpdated,
-			&p.ID,
-			&p.Active,
-			&p.BirthDate,
-			&p.Email,
-			&p.GivenName,
-			&p.Name,
-			&p.FamilyName,
-			&p.JobCategory,
-			&p.PreferredGivenName,
-			&p.PreferredFamilyName,
-			&p.HonorificPrefix,
-			&p.Role,
-			&p.Settings,
-			&p.ObjectClass,
-			&p.ExpirationDate,
-			encTokens,
+			&p.id,
+			&p.dateCreated,
+			&p.dateUpdated,
+			&p.externalID,
+			&p.active,
+			&p.birthDate,
+			&p.email,
+			&p.givenName,
+			&p.name,
+			&p.familyName,
+			&p.jobCategory,
+			&p.preferredGivenName,
+			&p.preferredFamilyName,
+			&p.honorificPrefix,
+			&p.role,
+			&p.settings,
+			&p.objectClass,
+			&p.expirationDate,
+			&p.token,
 		)
 		if err != nil {
 			return nil, err
 		}
-		p.Token, err = repo.decryptTokens(encTokens)
-		if err != nil {
-			return nil, err
-		}
-		rowIDs = append(rowIDs, rowID)
-		people = append(people, p)
+		personRecs = append(personRecs, p)
 	}
 
-	if len(people) == 0 {
+	if len(personRecs) == 0 {
+		return nil, nil
+	}
+
+	people, err := repo.unpackPeople(ctx, personRecs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return people, nil
+}
+
+func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person) ([]*models.Person, error) {
+	people := make([]*models.Person, 0, len(personRecs))
+
+	if len(personRecs) == 0 {
 		return people, nil
+	}
+
+	rowIDs := make([]int, 0, len(personRecs))
+	for _, personRec := range personRecs {
+		rowIDs = append(rowIDs, personRec.id)
+
+		person := &models.Person{
+			ID:                  personRec.externalID.String,
+			Active:              personRec.active.Bool,
+			DateCreated:         &personRec.dateCreated.Time,
+			DateUpdated:         &personRec.dateUpdated.Time,
+			Name:                personRec.name.String,
+			GivenName:           personRec.givenName.String,
+			FamilyName:          personRec.familyName.String,
+			Email:               personRec.email.String,
+			PreferredGivenName:  personRec.preferredGivenName.String,
+			PreferredFamilyName: personRec.preferredFamilyName.String,
+			BirthDate:           personRec.birthDate.String,
+			HonorificPrefix:     personRec.honorificPrefix.String,
+			ExpirationDate:      personRec.expirationDate.String,
+		}
+		if vals, err := fromNullStringArray(personRec.jobCategory.Bytes); err != nil {
+			return nil, err
+		} else {
+			person.JobCategory = vals
+		}
+		if vals, err := fromNullStringArray(personRec.role.Bytes); err != nil {
+			return nil, err
+		} else {
+			person.Role = vals
+		}
+		if vals, err := fromNullStringArray(personRec.objectClass.Bytes); err != nil {
+			return nil, err
+		} else {
+			person.ObjectClass = vals
+		}
+		if vals, err := fromNullStringArray(personRec.token.Bytes); err != nil {
+			return nil, err
+		} else {
+			urns := make([]*models.URN, 0, len(vals))
+			for _, encToken := range vals {
+				urn, err := repo.descryptToken(encToken)
+				if err != nil {
+					return nil, err
+				}
+				urns = append(urns, urn)
+			}
+			person.Token = urns
+		}
+		if m, err := fromNullMap(personRec.settings.Bytes); err != nil {
+			return nil, err
+		} else {
+			person.Settings = m
+		}
+		people = append(people, person)
 	}
 
 	allPersonOrganizationMembers, err := repo.getOrganizationMembers(ctx, rowIDs...)
 	if err != nil {
 		return nil, err
 	}
-
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
+	for i := 0; i < len(personRecs); i++ {
+		personRec := personRecs[i]
 		person := people[i]
 		for _, orgMember := range allPersonOrganizationMembers {
-			if orgMember.personID == rowID {
+			if orgMember.personID == personRec.id {
 				person.AddOrganizationMember(&models.OrganizationMember{
 					ID:          orgMember.organizationExternalID,
 					DateCreated: orgMember.dateCreated,
@@ -1498,11 +1567,11 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...model
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
+	for i := 0; i < len(personRecs); i++ {
+		personRec := personRecs[i]
 		person := people[i]
 		for _, pid := range allPersonIdentifiers {
-			if pid.personID == rowID {
+			if pid.personID == personRec.id {
 				urn, _ := models.ParseURN(pid.value)
 				person.AddIdentifier(urn)
 			}
@@ -1583,112 +1652,98 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 	}
 	defer rows.Close()
 
-	rowIDs := []int{}
-	people := []*models.Person{}
+	personRecs := []*person{}
 
 	for rows.Next() {
-		var rowID int
-		var encTokens []string
-		p := &models.Person{}
+		personRec := &person{}
 		err = rows.Scan(
-			&rowID,
-			&p.DateCreated,
-			&p.DateUpdated,
-			&p.ID,
-			&p.Active,
-			&p.BirthDate,
-			&p.Email,
-			&p.GivenName,
-			&p.Name,
-			&p.FamilyName,
-			&p.JobCategory,
-			&p.PreferredGivenName,
-			&p.PreferredFamilyName,
-			&p.HonorificPrefix,
-			&p.Role,
-			&p.Settings,
-			&p.ObjectClass,
-			&p.ExpirationDate,
-			encTokens,
+			&personRec.id,
+			&personRec.dateCreated,
+			&personRec.dateUpdated,
+			&personRec.externalID,
+			&personRec.active,
+			&personRec.birthDate,
+			&personRec.email,
+			&personRec.givenName,
+			&personRec.name,
+			&personRec.familyName,
+			&personRec.jobCategory,
+			&personRec.preferredGivenName,
+			&personRec.preferredFamilyName,
+			&personRec.honorificPrefix,
+			&personRec.role,
+			&personRec.settings,
+			&personRec.objectClass,
+			&personRec.expirationDate,
+			&personRec.token,
 		)
 		if err != nil {
 			return nil, err
 		}
-		p.Token, err = repo.decryptTokens(encTokens)
-		if err != nil {
-			return nil, err
-		}
-		rowIDs = append(rowIDs, rowID)
-		people = append(people, p)
+		personRecs = append(personRecs, personRec)
 	}
 
-	if len(people) == 0 {
-		return people, nil
+	if len(personRecs) == 0 {
+		return nil, nil
 	}
 
-	allPersonOrganizationMembers, err := repo.getOrganizationMembers(ctx, rowIDs...)
+	people, err := repo.unpackPeople(ctx, personRecs...)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
-		person := people[i]
-		for _, orgMember := range allPersonOrganizationMembers {
-			if orgMember.personID == rowID {
-				person.AddOrganizationMember(models.OrganizationMember{
-					ID:          orgMember.organizationExternalID,
-					DateCreated: orgMember.dateCreated,
-					DateUpdated: orgMember.dateUpdated,
-				})
-			}
-		}
-	}
-
-	allPersonIdentifiers, err := repo.getPersonIdentifiers(ctx, rowIDs...)
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
-		person := people[i]
-		for _, pid := range allPersonIdentifiers {
-			if pid.personID == rowID {
-				urn, _ := models.ParseURN(pid.value)
-				person.AddIdentifier(*urn)
-			}
-		}
 	}
 
 	return people, nil
 }
 
-// TODO: make transaction safe
-func (repo *repository) SetPersonRole(ctx context.Context, id string, roles []string) error {
-	person, err := repo.GetPerson(ctx, id)
-	if err != nil {
-		return err
-	}
-	person.Role = roles
-	_, err = repo.UpdatePerson(ctx, person)
-	return err
-}
-
-// TODO: make transaction safe
-func (repo *repository) SetPersonSettings(ctx context.Context, id string, settings map[string]string) error {
-	person, err := repo.GetPerson(ctx, id)
+func (repo *repository) SetPersonRole(ctx context.Context, externalID string, roles []string) error {
+	res, err := repo.client.ExecContext(
+		ctx,
+		`UPDATE "people" SET date_updated = now(), role = $1 WHERE external_id = $2`,
+		nullJSON(roles),
+		externalID,
+	)
 	if err != nil {
 		return err
 	}
 
-	person.Settings = settings
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
 
-	_, err = repo.UpdatePerson(ctx, person)
-	return err
+	if affected == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
 }
 
+func (repo *repository) SetPersonSettings(ctx context.Context, externalID string, settings map[string]string) error {
+	res, err := repo.client.ExecContext(
+		ctx,
+		`UPDATE "people" SET date_updated = now(), settings = $1 WHERE external_id = $2`,
+		nullJSON(settings),
+		externalID,
+	)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return models.ErrNotFound
+	}
+
+	return nil
+}
+
+// TODO: not ALL people have ldap attribute ugentexpirationdate, but are still active there
 func (repo *repository) AutoExpirePeople(ctx context.Context) (int64, error) {
-	query := "UPDATE people SET active = false WHERE expiration_date <= $1 AND active = true"
+	query := "UPDATE people SET active = false, date_updated = now() WHERE expiration_date <= $1 AND active = true"
 
 	res, err := repo.client.ExecContext(ctx, query, time.Now().Local().Format("20060101"))
 	if err != nil {
@@ -1773,81 +1828,44 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	}
 	defer rows.Close()
 
-	rowIDs := []int{}
-	people := []*models.Person{}
+	personRecs := []*person{}
 
 	for rows.Next() {
-		var rowID int
-		var encTokens []string
-		p := &models.Person{}
+		personRec := &person{}
 		err = rows.Scan(
-			&rowID,
-			&p.DateCreated,
-			&p.DateUpdated,
-			&p.ID,
-			&p.Active,
-			&p.BirthDate,
-			&p.Email,
-			&p.GivenName,
-			&p.Name,
-			&p.FamilyName,
-			&p.JobCategory,
-			&p.PreferredGivenName,
-			&p.PreferredFamilyName,
-			&p.HonorificPrefix,
-			&p.Role,
-			&p.Settings,
-			&p.ObjectClass,
-			&p.ExpirationDate,
-			encTokens,
+			&personRec.id,
+			&personRec.dateCreated,
+			&personRec.dateUpdated,
+			&personRec.externalID,
+			&personRec.active,
+			&personRec.birthDate,
+			&personRec.email,
+			&personRec.givenName,
+			&personRec.name,
+			&personRec.familyName,
+			&personRec.jobCategory,
+			&personRec.preferredGivenName,
+			&personRec.preferredFamilyName,
+			&personRec.honorificPrefix,
+			&personRec.role,
+			&personRec.settings,
+			&personRec.objectClass,
+			&personRec.expirationDate,
+			&personRec.token,
 		)
 		if err != nil {
 			return nil, newCursor, err
 		}
-		p.Token, err = repo.decryptTokens(encTokens)
-		if err != nil {
-			return nil, newCursor, err
-		}
-		rowIDs = append(rowIDs, rowID)
-		people = append(people, p)
+		personRecs = append(personRecs, personRec)
 	}
 
-	if len(people) == 0 {
-		return people, newCursor, nil
+	if len(personRecs) == 0 {
+		return nil, newCursor, nil
 	}
 
-	allPersonOrganizationMembers, err := repo.getOrganizationMembers(ctx, rowIDs...)
+	people, err := repo.unpackPeople(ctx, personRecs...)
 	if err != nil {
 		return nil, newCursor, err
-	}
-
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
-		person := people[i]
-		for _, orgMember := range allPersonOrganizationMembers {
-			if orgMember.personID == rowID {
-				person.AddOrganizationMember(models.OrganizationMember{
-					ID:          orgMember.organizationExternalID,
-					DateCreated: orgMember.dateCreated,
-					DateUpdated: orgMember.dateUpdated,
-				})
-			}
-		}
-	}
-
-	allPersonIdentifiers, err := repo.getPersonIdentifiers(ctx, rowIDs...)
-	if err != nil {
-		return nil, newCursor, err
-	}
-	for i := 0; i < len(rowIDs); i++ {
-		rowID := rowIDs[i]
-		person := people[i]
-		for _, pid := range allPersonIdentifiers {
-			if pid.personID == rowID {
-				urn, _ := models.ParseURN(pid.value)
-				person.AddIdentifier(*urn)
-			}
-		}
 	}
 
 	var total int
@@ -1855,10 +1873,9 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	if err != nil {
 		return nil, newCursor, err
 	}
-
-	if total > len(people) {
+	if total > len(personRecs) {
 		newCursor = setCursor{
-			LastID: rowIDs[len(rowIDs)-1],
+			LastID: personRecs[len(personRecs)-1].id,
 		}
 	}
 
@@ -1896,16 +1913,4 @@ func (repo *repository) descryptToken(encToken string) (*models.URN, error) {
 		Namespace: eURN.Namespace,
 		Value:     rawTokenVal,
 	}, nil
-}
-
-func (repo *repository) decryptTokens(encTokens []string) ([]*models.URN, error) {
-	urns := make([]*models.URN, 0, len(encTokens))
-	for _, encToken := range encTokens {
-		urn, err := repo.descryptToken(encToken)
-		if err != nil {
-			return nil, err
-		}
-		urns = append(urns, urn)
-	}
-	return urns, nil
 }

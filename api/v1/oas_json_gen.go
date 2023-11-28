@@ -1365,12 +1365,24 @@ func (s *OrganizationParent) encodeFields(e *jx.Encoder) {
 			s.DateUpdated.Encode(e, json.EncodeDateTime)
 		}
 	}
+	{
+		e.FieldStart("from")
+		json.EncodeDateTime(e, s.From)
+	}
+	{
+		if s.Until.Set {
+			e.FieldStart("until")
+			s.Until.Encode(e, json.EncodeDateTime)
+		}
+	}
 }
 
-var jsonFieldsNameOfOrganizationParent = [3]string{
+var jsonFieldsNameOfOrganizationParent = [5]string{
 	0: "id",
 	1: "date_created",
 	2: "date_updated",
+	3: "from",
+	4: "until",
 }
 
 // Decode decodes OrganizationParent from json.
@@ -1414,6 +1426,28 @@ func (s *OrganizationParent) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"date_updated\"")
 			}
+		case "from":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.From = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"from\"")
+			}
+		case "until":
+			if err := func() error {
+				s.Until.Reset()
+				if err := s.Until.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"until\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -1424,7 +1458,7 @@ func (s *OrganizationParent) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000001,
+		0b00001001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

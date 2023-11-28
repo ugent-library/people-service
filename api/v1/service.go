@@ -27,13 +27,13 @@ func (s *Service) GetPerson(ctx context.Context, req *GetPersonRequest) (*Person
 }
 
 func (s *Service) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error) {
-	urns := make([]models.URN, 0, len(req.ID))
+	urns := make([]*models.URN, 0, len(req.ID))
 	for _, id := range req.ID {
 		urn, err := models.ParseURN(id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
 		}
-		urns = append(urns, *urn)
+		urns = append(urns, urn)
 	}
 	people, err := s.repository.GetPeopleByIdentifier(ctx, urns...)
 	if err != nil {
@@ -148,13 +148,13 @@ func (s *Service) GetOrganization(ctx context.Context, req *GetOrganizationReque
 }
 
 func (s *Service) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
-	urns := make([]models.URN, 0, len(req.ID))
+	urns := make([]*models.URN, 0, len(req.ID))
 	for _, id := range req.ID {
 		urn, err := models.ParseURN(id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
 		}
-		urns = append(urns, *urn)
+		urns = append(urns, urn)
 	}
 	orgs, err := s.repository.GetOrganizationsByIdentifier(ctx, urns...)
 	if err != nil {
@@ -248,7 +248,11 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 
 	ids := make([]*models.URN, 0, len(p.Identifier))
 	for _, identifier := range p.Identifier {
-		ids = append(ids, models.NewURN(identifier.PropertyID, identifier.Value))
+		id, err := models.ParseURN(identifier.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", identifier.Value, models.ErrInvalidURN)
+		}
+		ids = append(ids, id)
 	}
 	person.SetIdentifier(ids...)
 
@@ -289,7 +293,11 @@ func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organi
 	parents := []*models.OrganizationParent{}
 	for _, parent := range o.Parent {
 		op := models.OrganizationParent{
-			ID: parent.ID,
+			ID:   parent.ID,
+			From: &parent.From,
+		}
+		if parent.Until.Set {
+			op.Until = &parent.Until.Value
 		}
 		parents = append(parents, &op)
 	}
@@ -298,7 +306,11 @@ func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organi
 
 	ids := make([]*models.URN, 0, len(o.Identifier))
 	for _, identifier := range o.Identifier {
-		ids = append(ids, models.NewURN(identifier.PropertyID, identifier.Value))
+		id, err := models.ParseURN(identifier.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %s: %w", identifier.Value, models.ErrInvalidURN)
+		}
+		ids = append(ids, id)
 	}
 	org.SetIdentifier(ids...)
 
@@ -394,7 +406,7 @@ func mapToExternalPerson(person *models.Person) *Person {
 		p.Organization = append(p.Organization, externalOrgMember)
 	}
 	for _, id := range person.Identifier {
-		p.Identifier = append(p.Identifier, newPropertyValue(id.Namespace, id.Value))
+		p.Identifier = append(p.Identifier, newPropertyValue(id.Namespace, id.String()))
 	}
 
 	p.Role = append(p.Role, person.Role...)
@@ -427,13 +439,17 @@ func mapToExternalOrganization(org *models.Organization) *Organization {
 		o.NameEng = NewOptString(org.NameEng)
 	}
 	for _, id := range org.Identifier {
-		o.Identifier = append(o.Identifier, newPropertyValue(id.Namespace, id.Value))
+		o.Identifier = append(o.Identifier, newPropertyValue(id.Namespace, id.String()))
 	}
 	for _, organizationParent := range org.Parent {
 		op := OrganizationParent{
 			ID:          organizationParent.ID,
 			DateCreated: NewOptDateTime(*organizationParent.DateCreated),
 			DateUpdated: NewOptDateTime(*organizationParent.DateUpdated),
+			From:        *organizationParent.From,
+		}
+		if organizationParent.Until != nil {
+			op.Until = NewOptDateTime(*organizationParent.Until)
 		}
 		o.Parent = append(o.Parent, op)
 	}

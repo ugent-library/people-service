@@ -8,7 +8,7 @@ CREATE TABLE "organizations" (
   "type" character varying NOT NULL DEFAULT 'organization',
   "acronym" character varying NULL,
   "name_eng" character varying NULL,
-  "name_dut" character varying NULL
+  "name_dut" character varying NULL,
   PRIMARY KEY ("id")
 );
 
@@ -26,6 +26,8 @@ CREATE TABLE "organization_parents" (
   "date_updated" timestamptz NOT NULL,
   "parent_organization_id" bigint NOT NULL,
   "organization_id" bigint NOT NULL,
+  "from" timestamptz NOT NULL,
+  "until" timestamptz NULL,
   PRIMARY KEY ("id")
 );
 
@@ -41,7 +43,7 @@ CREATE INDEX "organization_parents_organization_id_idx" ON "organization_parents
 
 CREATE INDEX "organization_parents_parent_organization_id_idx" ON "organization_parents" ("parent_organization_id");
 
-CREATE UNIQUE INDEX "organization_parents_key" ON "organization_parents" ("parent_organization_id", "organization_id");
+CREATE UNIQUE INDEX "organization_parents_key" ON "organization_parents" ("parent_organization_id", "organization_id", "from");
 
 -- people
 
@@ -120,7 +122,7 @@ ALTER TABLE "person_identifiers"
   ADD CONSTRAINT "person_identifiers_person_id_fkey"
   FOREIGN KEY ("person_id") REFERENCES "people" ("id") ON UPDATE NO ACTION ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX "person_identifiers_key" on "person_identifiers" ("value");
+CREATE UNIQUE INDEX "person_identifiers_key" on "person_identifiers" ("person_id", "value");
 
 -- organization_identifiers
 
@@ -137,7 +139,7 @@ ALTER TABLE "organization_identifiers"
   ADD CONSTRAINT "organization_identifiers_organization_id_fkey"
   FOREIGN KEY ("organization_id") REFERENCES "organizations" ("id") ON UPDATE NO ACTION ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX "organization_identifiers_key" on "organization_identifiers" ("value");
+CREATE UNIQUE INDEX "organization_identifiers_key" on "organization_identifiers" ("organization_id", "value");
 
 -- ts vectors
 
@@ -161,7 +163,7 @@ ALTER TABLE organizations
 		to_tsvector('usimple', ts_vals)
 	) STORED;
 
-CREATE INDEX IF NOT EXISTS organizations_ts_idx ON organization USING GIN(ts);
+CREATE INDEX IF NOT EXISTS organizations_ts_idx ON organizations USING GIN(ts);
 
 ALTER TABLE people
   ADD COLUMN IF NOT EXISTS ts_vals jsonb;

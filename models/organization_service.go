@@ -7,7 +7,7 @@ type OrganizationService interface {
 	CreateOrganization(context.Context, *Organization) (*Organization, error)
 	UpdateOrganization(context.Context, *Organization) (*Organization, error)
 	GetOrganization(context.Context, string) (*Organization, error)
-	GetOrganizationsByIdentifier(context.Context, ...URN) ([]*Organization, error)
+	GetOrganizationsByIdentifier(context.Context, ...*URN) ([]*Organization, error)
 	DeleteOrganization(context.Context, string) error
 	EachOrganization(context.Context, func(*Organization) bool) error
 	GetOrganizations(context.Context) ([]*Organization, string, error)
