@@ -26,7 +26,6 @@ type Person struct {
 	Role                []string              `json:"role,omitempty"`
 	Settings            map[string]string     `json:"settings,omitempty"`
 	ObjectClass         []string              `json:"object_class,omitempty"`
-	ExpirationDate      string                `json:"expiration_date,omitempty"`
 }
 
 func (person *Person) IsStored() bool {
@@ -176,7 +175,6 @@ func (p *Person) Dup() *Person {
 		PreferredFamilyName: p.PreferredFamilyName,
 		BirthDate:           p.BirthDate,
 		HonorificPrefix:     p.HonorificPrefix,
-		ExpirationDate:      p.ExpirationDate,
 	}
 	for _, token := range p.Token {
 		newP.Token = append(newP.Token, token.Dup())

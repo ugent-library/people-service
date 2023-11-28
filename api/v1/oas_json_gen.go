@@ -1651,15 +1651,9 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 			e.ArrEnd()
 		}
 	}
-	{
-		if s.ExpirationDate.Set {
-			e.FieldStart("expiration_date")
-			s.ExpirationDate.Encode(e)
-		}
-	}
 }
 
-var jsonFieldsNameOfPerson = [20]string{
+var jsonFieldsNameOfPerson = [19]string{
 	0:  "id",
 	1:  "active",
 	2:  "date_created",
@@ -1679,7 +1673,6 @@ var jsonFieldsNameOfPerson = [20]string{
 	16: "role",
 	17: "settings",
 	18: "object_class",
-	19: "expiration_date",
 }
 
 // Decode decodes Person from json.
@@ -1927,16 +1920,6 @@ func (s *Person) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"object_class\"")
-			}
-		case "expiration_date":
-			if err := func() error {
-				s.ExpirationDate.Reset()
-				if err := s.ExpirationDate.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"expiration_date\"")
 			}
 		default:
 			return d.Skip()

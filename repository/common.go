@@ -98,11 +98,6 @@ func pgIntArray(values []int) pgtype.Int4Array {
 	return pgValues
 }
 
-func toJSON(val any) []byte {
-	bytes, _ := json.Marshal(val)
-	return bytes
-}
-
 func vacuum(values []string) []string {
 	newValues := make([]string, 0, len(values))
 	for _, val := range values {

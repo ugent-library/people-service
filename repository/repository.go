@@ -94,7 +94,6 @@ type person struct {
 	role                pgtype.JSONB
 	settings            pgtype.JSONB
 	objectClass         pgtype.JSONB
-	expirationDate      pgtype.Text
 }
 
 func NewRepository(config *Config) (*repository, error) {
@@ -994,7 +993,6 @@ INSERT INTO "people"
 		"role",
 		"settings",
 		"object_class",
-		"expiration_date",
 		"token",
 		"ts_vals"
 	)
@@ -1018,7 +1016,6 @@ INSERT INTO "people"
 		$16,
 		$17,
 		$18,
-		$19
 	)
 	RETURNING "id"
 	`
@@ -1040,7 +1037,6 @@ INSERT INTO "people"
 		nullJSON(p.Role),
 		nullJSON(p.Settings),
 		nullJSON(p.ObjectClass),
-		nullString(p.ExpirationDate),
 	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
@@ -1198,10 +1194,9 @@ SET "date_updated" = $1,
 	"role" = $12,
 	"settings" = $13,
 	"object_class" = $14,
-	"expiration_date" = $15,
-	"token" = $16,
-	"ts_vals" = $17
-WHERE "external_id" = $18 
+	"token" = $15,
+	"ts_vals" = $16
+WHERE "external_id" = $17
 RETURNING "id"
 	`
 	var rowID int
@@ -1220,7 +1215,6 @@ RETURNING "id"
 		nullJSON(p.Role),
 		nullJSON(p.Settings),
 		nullJSON(p.ObjectClass),
-		nullString(p.ExpirationDate),
 	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
@@ -1360,7 +1354,6 @@ SELECT
 	"role",
 	"settings", 
 	"object_class",
-	"expiration_date",
 	"token"
 FROM "people" WHERE "external_id" = $1
 LIMIT 1
@@ -1385,7 +1378,6 @@ LIMIT 1
 		&p.role,
 		&p.settings,
 		&p.objectClass,
-		&p.expirationDate,
 		&p.token,
 	)
 
@@ -1424,7 +1416,6 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 		"role",
 		"settings", 
 		"object_class",
-		"expiration_date",
 		"token"
 	FROM "people"
 	WHERE "id" IN (SELECT "person_id" FROM "person_identifiers" WHERE "value" = any($1))
@@ -1462,7 +1453,6 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 			&p.role,
 			&p.settings,
 			&p.objectClass,
-			&p.expirationDate,
 			&p.token,
 		)
 		if err != nil {
@@ -1507,7 +1497,6 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 			PreferredFamilyName: personRec.preferredFamilyName.String,
 			BirthDate:           personRec.birthDate.String,
 			HonorificPrefix:     personRec.honorificPrefix.String,
-			ExpirationDate:      personRec.expirationDate.String,
 		}
 		if vals, err := fromNullStringArray(personRec.jobCategory.Bytes); err != nil {
 			return nil, err
@@ -1635,7 +1624,6 @@ SELECT
 	"role",
 	"settings", 
 	"object_class",
-	"expiration_date",
 	"token",
 	ts_rank(ts, %s) AS rank
 FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
@@ -1674,7 +1662,6 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 			&personRec.role,
 			&personRec.settings,
 			&personRec.objectClass,
-			&personRec.expirationDate,
 			&personRec.token,
 		)
 		if err != nil {
@@ -1741,23 +1728,6 @@ func (repo *repository) SetPersonSettings(ctx context.Context, externalID string
 	return nil
 }
 
-// TODO: not ALL people have ldap attribute ugentexpirationdate, but are still active there
-func (repo *repository) AutoExpirePeople(ctx context.Context) (int64, error) {
-	query := "UPDATE people SET active = false, date_updated = now() WHERE expiration_date <= $1 AND active = true"
-
-	res, err := repo.client.ExecContext(ctx, query, time.Now().Local().Format("20060101"))
-	if err != nil {
-		return 0, err
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-
-	return rowsAffected, nil
-}
-
 func (repo *repository) GetPeople(ctx context.Context) ([]*models.Person, string, error) {
 	people, newCursor, err := repo.getPeople(ctx, setCursor{})
 	if err != nil {
@@ -1817,7 +1787,6 @@ SELECT
 	"role",
 	"settings", 
 	"object_class",
-	"expiration_date",
 	"token"
 FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	`
@@ -1850,7 +1819,6 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 			&personRec.role,
 			&personRec.settings,
 			&personRec.objectClass,
-			&personRec.expirationDate,
 			&personRec.token,
 		)
 		if err != nil {

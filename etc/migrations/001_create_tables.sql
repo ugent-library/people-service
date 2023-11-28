@@ -65,7 +65,6 @@ CREATE TABLE "people" (
   "role" jsonb NULL,
   "settings" jsonb NULL,
   "object_class" jsonb NULL,
-  "expiration_date" character varying NULL,
   "token" jsonb NULL,
   PRIMARY KEY ("id")
 );

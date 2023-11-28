@@ -230,7 +230,6 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 	person.Active = p.Active.Value
 	person.BirthDate = p.BirthDate.Value
 	person.SetEmail(p.Email.Value)
-	person.ExpirationDate = p.ExpirationDate.Value
 	person.GivenName = p.GivenName.Value
 	person.FamilyName = p.FamilyName.Value
 	person.Name = p.Name.Value
@@ -372,9 +371,6 @@ func mapToExternalPerson(person *models.Person) *Person {
 	p.DateUpdated = NewOptDateTime(*person.DateUpdated)
 	if person.Email != "" {
 		p.Email = NewOptString(person.Email)
-	}
-	if person.ExpirationDate != "" {
-		p.ExpirationDate = NewOptString(person.ExpirationDate)
 	}
 	if person.GivenName != "" {
 		p.GivenName = NewOptString(person.GivenName)

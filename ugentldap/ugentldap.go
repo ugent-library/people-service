@@ -33,7 +33,6 @@ var ldapAttributes = []string{
 	"ugentJobCategory",
 	"ugentAddressingTitle",
 	"displayName",
-	"ugentExpirationDate",
 	"departmentNumber",
 }
 

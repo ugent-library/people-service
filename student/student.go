@@ -78,7 +78,6 @@ func (si *Importer) Each(cb func(*models.Person) error) error {
 			oldPerson.JobCategory = newPerson.JobCategory
 			oldPerson.HonorificPrefix = newPerson.HonorificPrefix
 			oldPerson.ObjectClass = newPerson.ObjectClass
-			oldPerson.ExpirationDate = newPerson.ExpirationDate
 
 			// only add organizations not known yet (gismo possibly knows more)
 			for _, newOrgMember := range newPerson.Organization {
@@ -152,8 +151,6 @@ func (si *Importer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person, er
 				newPerson.HonorificPrefix = val
 			case "objectClass":
 				newPerson.AddObjectClass(val)
-			case "ugentExpirationDate":
-				newPerson.ExpirationDate = val
 			case "departmentNumber":
 				realOrgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("ugent_id", val))
 				// ignore for now. Maybe tomorrow on the next run

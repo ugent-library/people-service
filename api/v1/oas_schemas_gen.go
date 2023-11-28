@@ -597,7 +597,6 @@ type Person struct {
 	Role                []string             `json:"role"`
 	Settings            OptPersonSettings    `json:"settings"`
 	ObjectClass         []string             `json:"object_class"`
-	ExpirationDate      OptString            `json:"expiration_date"`
 }
 
 // GetID returns the value of ID.
@@ -695,11 +694,6 @@ func (s *Person) GetObjectClass() []string {
 	return s.ObjectClass
 }
 
-// GetExpirationDate returns the value of ExpirationDate.
-func (s *Person) GetExpirationDate() OptString {
-	return s.ExpirationDate
-}
-
 // SetID sets the value of ID.
 func (s *Person) SetID(val OptString) {
 	s.ID = val
@@ -793,11 +787,6 @@ func (s *Person) SetSettings(val OptPersonSettings) {
 // SetObjectClass sets the value of ObjectClass.
 func (s *Person) SetObjectClass(val []string) {
 	s.ObjectClass = val
-}
-
-// SetExpirationDate sets the value of ExpirationDate.
-func (s *Person) SetExpirationDate(val OptString) {
-	s.ExpirationDate = val
 }
 
 // Ref: #/components/schemas/PersonListResponse
