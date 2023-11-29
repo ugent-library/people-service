@@ -790,7 +790,18 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 	tsQuery, tsQueryArgs := toTSQuery(query)
 
 	sqlQuery := fmt.Sprintf(
-		`SELECT "id", "external_id", "date_created", "date_updated", "type", "name_dut", "name_eng", "acronym" FROM "organizations" WHERE ts @@ %s LIMIT %d`,
+		`SELECT
+		"id", 
+		"external_id", 
+		"date_created", 
+		"date_updated", 
+		"type", 
+		"name_dut", 
+		"name_eng", 
+		"acronym",
+		ts_rank(ts, %s) AS rank 
+		FROM "organizations" WHERE ts @@ %s LIMIT %d`,
+		tsQuery,
 		tsQuery,
 		organizationSuggestLimit)
 
@@ -804,6 +815,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 
 	for rows.Next() {
 		orgRec := &organization{}
+		var rank float64
 		err = rows.Scan(
 			&orgRec.id,
 			&orgRec.externalID,
@@ -813,6 +825,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 			&orgRec.nameDut,
 			&orgRec.nameEng,
 			&orgRec.acronym,
+			&rank,
 		)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -1015,7 +1028,7 @@ INSERT INTO "people"
 		$15,
 		$16,
 		$17,
-		$18,
+		$18
 	)
 	RETURNING "id"
 	`
@@ -1644,6 +1657,7 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 
 	for rows.Next() {
 		personRec := &person{}
+		var rank float64
 		err = rows.Scan(
 			&personRec.id,
 			&personRec.dateCreated,
@@ -1663,6 +1677,7 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 			&personRec.settings,
 			&personRec.objectClass,
 			&personRec.token,
+			&rank,
 		)
 		if err != nil {
 			return nil, err
@@ -1848,6 +1863,42 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	}
 
 	return people, newCursor, nil
+}
+
+func (repo *repository) GetPersonIDActive(ctx context.Context, active bool) ([]string, error) {
+	rows, err := repo.client.QueryContext(ctx, `SELECT "external_id" FROM "people" WHERE active = $1`, active)
+	if err != nil {
+		return nil, err
+	}
+
+	externalIDs := []string{}
+	for rows.Next() {
+		var externalID string
+		err := rows.Scan(&externalID)
+		if err != nil {
+			return nil, err
+		}
+		externalIDs = append(externalIDs, externalID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return externalIDs, nil
+}
+
+func (repo *repository) SetPeopleActive(ctx context.Context, active bool, externalIDs ...string) error {
+	_, err := repo.client.ExecContext(
+		ctx,
+		`UPDATE "people" SET date_updated = now(), active = $1 WHERE "external_id" = any($2)`,
+		active,
+		pgTextArray(externalIDs),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *repository) encodeCursor(c any) (string, error) {

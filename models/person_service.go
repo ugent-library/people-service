@@ -18,4 +18,6 @@ type PersonService interface {
 	SetPersonSettings(context.Context, string, map[string]string) error
 	GetPeople(context.Context) ([]*Person, string, error)
 	GetMorePeople(context.Context, string) ([]*Person, string, error)
+	GetPersonIDActive(context.Context, bool) ([]string, error)
+	SetPeopleActive(context.Context, bool, ...string) error
 }

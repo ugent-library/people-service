@@ -203,3 +203,17 @@ func (p *Person) Dup() *Person {
 
 	return newP
 }
+
+type ByPerson []*Person
+
+func (people ByPerson) Len() int {
+	return len(people)
+}
+
+func (people ByPerson) Swap(i, j int) {
+	people[i], people[j] = people[j], people[i]
+}
+
+func (people ByPerson) Less(i, j int) bool {
+	return people[i].DateUpdated.Before(*people[j].DateUpdated)
+}
