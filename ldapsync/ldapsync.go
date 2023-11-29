@@ -76,6 +76,8 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 			fmt.Fprintf(os.Stderr,
 				"found old person %s for %s\n", oldPerson.ID, oldPerson.Name)
 
+			newActiveIDs = append(newActiveIDs, oldPerson.ID)
+
 			oldStoredPerson := oldPerson.Dup()
 			var gismoId string
 			var orcid string
@@ -139,7 +141,6 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 				return err
 			}
 			cb(oldPerson)
-			newActiveIDs = append(newActiveIDs, oldPerson.ID)
 		}
 
 		return nil

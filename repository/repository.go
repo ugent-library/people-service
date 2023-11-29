@@ -2,14 +2,15 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
 	"github.com/ugent-library/crypt"
@@ -24,9 +25,10 @@ const (
 )
 
 type repository struct {
-	client *sql.DB
+	client *pgxpool.Pool
 	secret []byte
 }
+
 type setCursor struct {
 	// IMPORTANT: auto increment (of id) starts with 1, so default value 0 should never match
 	LastID int `json:"l"`
@@ -77,7 +79,7 @@ type organization struct {
 
 type person struct {
 	id                  int
-	token               pgtype.JSONB
+	token               []byte
 	externalID          pgtype.Text
 	active              pgtype.Bool
 	dateCreated         pgtype.Timestamptz
@@ -90,19 +92,20 @@ type person struct {
 	preferredFamilyName pgtype.Text
 	birthDate           pgtype.Text
 	honorificPrefix     pgtype.Text
-	jobCategory         pgtype.JSONB
-	role                pgtype.JSONB
-	settings            pgtype.JSONB
-	objectClass         pgtype.JSONB
+	jobCategory         []byte
+	role                []byte
+	settings            []byte
+	objectClass         []byte
 }
 
 func NewRepository(config *Config) (*repository, error) {
-	client, err := openClient(config.DbUrl)
+	// cf. https://github.com/jackc/pgx/blob/master/pgxpool/pool.go#L286
+	pool, err := pgxpool.New(context.TODO(), config.DbUrl)
 	if err != nil {
 		return nil, err
 	}
 	return &repository{
-		client: client,
+		client: pool,
 		secret: []byte(config.AesKey),
 	}, nil
 }
@@ -112,10 +115,10 @@ func (repo *repository) getOrganizationIdentifiers(ctx context.Context, organiza
 SELECT
 	"id", "organization_id", "value" FROM "organization_identifiers"
 WHERE "organization_id" = any($1) ORDER BY array_position($1, organization_id), "value" ASC`
-	rows, err := repo.client.QueryContext(
+	rows, err := repo.client.Query(
 		ctx,
 		query,
-		pgIntArray(organizationIDs),
+		organizationIDs,
 	)
 	if err != nil {
 		return nil, err
@@ -128,7 +131,7 @@ WHERE "organization_id" = any($1) ORDER BY array_position($1, organization_id), 
 	for rows.Next() {
 		oid := &organizationIdentifier{}
 		err := rows.Scan(&oid.id, &oid.organizationID, &oid.value)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -148,10 +151,10 @@ func (repo *repository) getPersonIdentifiers(ctx context.Context, personIDs ...i
 SELECT
 	"id", "person_id", "value" FROM "person_identifiers"
 WHERE "person_id" = any($1) ORDER BY array_position($1, person_id), "value" ASC`
-	rows, err := repo.client.QueryContext(
+	rows, err := repo.client.Query(
 		ctx,
 		query,
-		pgIntArray(personIDs),
+		personIDs,
 	)
 	if err != nil {
 		return nil, err
@@ -163,7 +166,7 @@ WHERE "person_id" = any($1) ORDER BY array_position($1, person_id), "value" ASC`
 	for rows.Next() {
 		pid := &personIdentifier{}
 		err := rows.Scan(&pid.id, &pid.personID, &pid.value)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -191,10 +194,10 @@ FROM "organization_members" op
 WHERE "person_id" = any($1)
 ORDER BY array_position($1, person_id), "organization_id" ASC
 	`
-	rows, err := repo.client.QueryContext(
+	rows, err := repo.client.Query(
 		ctx,
 		query,
-		pgIntArray(personIDs),
+		personIDs,
 	)
 	if err != nil {
 		return nil, err
@@ -214,7 +217,7 @@ ORDER BY array_position($1, person_id), "organization_id" ASC
 			&om.dateUpdated,
 			&om.organizationExternalID,
 		)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -244,10 +247,10 @@ FROM "organization_parents" op
 WHERE "organization_id" = any($1)
 ORDER by array_position($1, organization_id), "parent_organization_id" ASC
 	`
-	rows, err := repo.client.QueryContext(
+	rows, err := repo.client.Query(
 		ctx,
 		query,
-		pgIntArray(organizationIDs),
+		organizationIDs,
 	)
 	if err != nil {
 		return nil, err
@@ -269,7 +272,7 @@ ORDER by array_position($1, organization_id), "parent_organization_id" ASC
 			&op.until,
 			&op.parentOrganizationExternalID,
 		)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -298,7 +301,7 @@ SELECT
 FROM organizations WHERE external_id = $1 LIMIT 1`
 
 	orgRec := &organization{}
-	err := repo.client.QueryRowContext(ctx, query, externalId).Scan(
+	err := repo.client.QueryRow(ctx, query, externalId).Scan(
 		&orgRec.id,
 		&orgRec.externalID,
 		&orgRec.dateCreated,
@@ -308,7 +311,7 @@ FROM organizations WHERE external_id = $1 LIMIT 1`
 		&orgRec.acronym,
 		&orgRec.Type,
 	)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrNotFound
 	}
 
@@ -343,7 +346,7 @@ FROM "organizations" WHERE "id" IN (
 )
 	`
 
-	rows, err := repo.client.QueryContext(ctx, query, pgTextArray(urnValues))
+	rows, err := repo.client.Query(ctx, query, urnValues)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +364,7 @@ FROM "organizations" WHERE "id" IN (
 			&orgRec.nameEng,
 			&orgRec.acronym,
 		)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -465,11 +468,11 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	}
 
 	// start transaction
-	tx, err := repo.client.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
 	// add organization
 	query := `
@@ -490,16 +493,16 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	tsVals = append(tsVals, org.GetIdentifierValues()...)
 	tsVals = vacuum(tsVals)
 	var rowID int
-	err = tx.QueryRowContext(
+	err = tx.QueryRow(
 		ctx, query,
 		org.ID,
 		org.DateCreated,
 		org.DateUpdated,
-		nullString(org.NameDut),
-		nullString(org.NameEng),
+		pgtext(org.NameDut),
+		pgtext(org.NameEng),
 		org.Type,
-		nullString(org.Acronym),
-		nullJSON(tsVals),
+		pgtext(org.Acronym),
+		pgjson(tsVals),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
@@ -513,10 +516,10 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	}
 	parentOrganizationExternalIds = lo.Uniq(parentOrganizationExternalIds)
 	query = `SELECT "id" FROM "organizations" WHERE "external_id" = any($1) ORDER BY array_position($1, external_id)`
-	pRows, err := tx.QueryContext(
+	pRows, err := tx.Query(
 		ctx,
 		query,
-		pgTextArray(parentOrganizationExternalIds),
+		parentOrganizationExternalIds,
 	)
 	if err != nil {
 		return nil, err
@@ -539,7 +542,7 @@ VALUES($1, $2, $3, $4, $5, $6);
 	for i := 0; i < len(parentOrganizationIDs); i++ {
 		parentOrganizationID := parentOrganizationIDs[i]
 		orgParent := org.Parent[i]
-		_, err := tx.ExecContext(
+		_, err := tx.Exec(
 			ctx,
 			query,
 			rowID,
@@ -561,11 +564,11 @@ INSERT INTO "organization_identifiers"
 VALUES($1, $2, $3, $4)
 	`
 	for _, urn := range org.Identifier {
-		tx.ExecContext(ctx, query, rowID, now, now, urn.String())
+		tx.Exec(ctx, query, rowID, now, now, urn.String())
 	}
 
 	// commit
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("unable to commit transaction: %w", err)
 	}
 
@@ -585,11 +588,11 @@ func (repo *repository) UpdateOrganization(ctx context.Context, org *models.Orga
 	}
 
 	// start transaction
-	tx, err := repo.client.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
 	// update organization
 	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
@@ -609,16 +612,16 @@ WHERE "external_id" = $1
 RETURNING "id"
 	`
 	var rowID int
-	err = tx.QueryRowContext(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		org.ID,
 		now,
-		nullString(org.NameDut),
-		nullString(org.NameEng),
+		pgtext(org.NameDut),
+		pgtext(org.NameEng),
 		org.Type,
-		nullString(org.Acronym),
-		nullJSON(tsVals),
+		pgtext(org.Acronym),
+		pgjson(tsVals),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
@@ -634,8 +637,7 @@ RETURNING "id"
 		}
 		parentOrganizationExternalIDs = lo.Uniq(parentOrganizationExternalIDs)
 
-		pgExternalIds := pgTextArray(parentOrganizationExternalIDs)
-		pRows, err := tx.QueryContext(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1) ORDER BY array_position($1, external_id)", pgExternalIds)
+		pRows, err := tx.Query(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1) ORDER BY array_position($1, external_id)", parentOrganizationExternalIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -645,7 +647,7 @@ RETURNING "id"
 			var parentID int
 			var parentExternalID string
 			err = pRows.Scan(&parentID, &parentExternalID)
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, models.ErrInvalidReference
 			}
 			if err != nil {
@@ -696,7 +698,7 @@ RETURNING "id"
 	if len(newOrganizationParents) > 0 {
 		for _, newOrganizationParent := range newOrganizationParents {
 			var relId int
-			err = tx.QueryRowContext(
+			err = tx.QueryRow(
 				ctx,
 				query,
 				rowID,
@@ -714,7 +716,7 @@ RETURNING "id"
 	}
 
 	query = `DELETE FROM "organization_parents" WHERE "organization_id" = $1 AND NOT "id" = any($2)`
-	_, err = tx.ExecContext(ctx, query, rowID, pgIntArray(updatedRelIds))
+	_, err = tx.Exec(ctx, query, rowID, updatedRelIds)
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +735,7 @@ RETURNING "id"
 `
 		for _, urnValue := range urnValues {
 			var relID int
-			err = tx.QueryRowContext(ctx, query, rowID, urnValue, now, now).Scan(&relID)
+			err = tx.QueryRow(ctx, query, rowID, urnValue, now, now).Scan(&relID)
 			if err != nil {
 				return nil, err
 			}
@@ -742,12 +744,12 @@ RETURNING "id"
 	}
 
 	query = `DELETE FROM "organization_identifiers" WHERE "organization_id" = $1 AND NOT "id" = any($2)`
-	_, err = tx.ExecContext(ctx, query, rowID, pgIntArray(updatedRelIds))
+	_, err = tx.Exec(ctx, query, rowID, updatedRelIds)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("unable to commit transaction: %w", err)
 	}
 
@@ -755,7 +757,7 @@ RETURNING "id"
 }
 
 func (repo *repository) DeleteOrganization(ctx context.Context, id string) error {
-	_, err := repo.client.ExecContext(ctx, "DELETE FROM organizations WHERE external_id = $1", id)
+	_, err := repo.client.Exec(ctx, "DELETE FROM organizations WHERE external_id = $1", id)
 	return err
 }
 
@@ -805,7 +807,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 		tsQuery,
 		organizationSuggestLimit)
 
-	rows, err := repo.client.QueryContext(ctx, sqlQuery, tsQueryArgs...)
+	rows, err := repo.client.Query(ctx, sqlQuery, tsQueryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +829,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 			&orgRec.acronym,
 			&rank,
 		)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		if err != nil {
@@ -906,7 +908,7 @@ SELECT
 FROM "organizations"
 WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 
-	rows, err := repo.client.QueryContext(ctx, query, cursor.LastID, organizationPageLimit)
+	rows, err := repo.client.Query(ctx, query, cursor.LastID, organizationPageLimit)
 	if err != nil {
 		return nil, newCursor, err
 	}
@@ -925,7 +927,7 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 			&orgRec.nameEng,
 			&orgRec.acronym,
 		)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, newCursor, nil
 		}
 		if err != nil {
@@ -944,7 +946,7 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 
 	// get uncapped total
 	var total int
-	err = repo.client.QueryRowContext(ctx, `SELECT COUNT(*) "total" FROM "organizations"`).Scan(&total)
+	err = repo.client.QueryRow(ctx, `SELECT COUNT(*) "total" FROM "organizations"`).Scan(&total)
 	if err != nil {
 		return nil, newCursor, err
 	}
@@ -981,11 +983,11 @@ func (repo *repository) CreatePerson(ctx context.Context, p *models.Person) (*mo
 		orgMember.DateUpdated = &now
 	}
 
-	tx, err := repo.client.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
 	query := `
 INSERT INTO "people"
@@ -1038,18 +1040,18 @@ INSERT INTO "people"
 		p.DateCreated,
 		p.DateUpdated,
 		p.Active,
-		nullString(p.BirthDate),
-		nullJSON(p.JobCategory),
-		nullString(p.Email),
-		nullString(p.GivenName),
-		nullString(p.PreferredGivenName),
-		nullString(p.Name),
-		nullString(p.FamilyName),
-		nullString(p.PreferredFamilyName),
-		nullString(p.HonorificPrefix),
-		nullJSON(p.Role),
-		nullJSON(p.Settings),
-		nullJSON(p.ObjectClass),
+		pgtext(p.BirthDate),
+		pgjson(p.JobCategory),
+		pgtext(p.Email),
+		pgtext(p.GivenName),
+		pgtext(p.PreferredGivenName),
+		pgtext(p.Name),
+		pgtext(p.FamilyName),
+		pgtext(p.PreferredFamilyName),
+		pgtext(p.HonorificPrefix),
+		pgjson(p.Role),
+		pgjson(p.Settings),
+		pgjson(p.ObjectClass),
 	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
@@ -1061,11 +1063,11 @@ INSERT INTO "people"
 		tokens = append(tokens, eURN.String())
 	}
 	queryArgs = append(queryArgs,
-		nullJSON(tokens),
-		nullJSON(vacuum([]string{p.Name})),
+		pgjson(tokens),
+		pgjson(vacuum([]string{p.Name})),
 	)
 
-	err = tx.QueryRowContext(ctx, query, queryArgs...).Scan(&rowID)
+	err = tx.QueryRow(ctx, query, queryArgs...).Scan(&rowID)
 	if err != nil {
 		return nil, err
 	}
@@ -1078,10 +1080,10 @@ INSERT INTO "people"
 		organizationExternalIDs = lo.Uniq(organizationExternalIDs)
 
 		orgRowIDS := []int{}
-		rows, err := tx.QueryContext(
+		rows, err := tx.Query(
 			ctx,
 			`SELECT "id" FROM "organizations" WHERE "external_id" = any($1)`,
-			pgTextArray(organizationExternalIDs))
+			organizationExternalIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -1090,7 +1092,7 @@ INSERT INTO "people"
 		for rows.Next() {
 			var rowID int
 			err = rows.Scan(&rowID)
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, models.ErrInvalidReference
 			}
 			if err != nil {
@@ -1111,7 +1113,7 @@ INSERT INTO "people"
 			INSERT INTO "organization_members"("date_created", "date_updated", "organization_id", "person_id")
 			VALUES($1, $2, $3, $4)
 			`
-			_, err = tx.ExecContext(ctx, insertQuery, now, now, orgRowIDS[i], rowID)
+			_, err = tx.Exec(ctx, insertQuery, now, now, orgRowIDS[i], rowID)
 			if err != nil {
 				return nil, err
 			}
@@ -1125,10 +1127,10 @@ INSERT INTO "person_identifiers"("person_id", "date_created", "date_updated", "v
 VALUES($1, $2, $3, $4)
 	`
 	for _, urnValue := range p.GetIdentifierQualifiedValues() {
-		tx.ExecContext(ctx, query, rowID, now, now, urnValue)
+		tx.Exec(ctx, query, rowID, now, now, urnValue)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("unable to commit transaction: %w", err)
 	}
 
@@ -1184,11 +1186,11 @@ func (repo *repository) UpdatePerson(ctx context.Context, p *models.Person) (*mo
 		}
 	}
 
-	tx, err := repo.client.BeginTx(ctx, &sql.TxOptions{})
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback(ctx)
 
 	// update person
 	query := `
@@ -1216,18 +1218,18 @@ RETURNING "id"
 	queryArgs := []any{
 		p.DateUpdated,
 		p.Active,
-		nullString(p.BirthDate),
-		nullJSON(p.JobCategory),
-		nullString(p.Email),
-		nullString(p.GivenName),
-		nullString(p.PreferredGivenName),
-		nullString(p.Name),
-		nullString(p.FamilyName),
-		nullString(p.PreferredFamilyName),
-		nullString(p.HonorificPrefix),
-		nullJSON(p.Role),
-		nullJSON(p.Settings),
-		nullJSON(p.ObjectClass),
+		pgtext(p.BirthDate),
+		pgjson(p.JobCategory),
+		pgtext(p.Email),
+		pgtext(p.GivenName),
+		pgtext(p.PreferredGivenName),
+		pgtext(p.Name),
+		pgtext(p.FamilyName),
+		pgtext(p.PreferredFamilyName),
+		pgtext(p.HonorificPrefix),
+		pgjson(p.Role),
+		pgjson(p.Settings),
+		pgjson(p.ObjectClass),
 	}
 	tokens := make([]string, 0, len(p.Token))
 	for _, token := range p.Token {
@@ -1239,12 +1241,12 @@ RETURNING "id"
 		tokens = append(tokens, eURN.String())
 	}
 	queryArgs = append(queryArgs,
-		nullJSON(tokens),
-		nullJSON(vacuum([]string{p.Name})),
+		pgjson(tokens),
+		pgjson(vacuum([]string{p.Name})),
 		p.ID,
 	)
 
-	err = tx.QueryRowContext(ctx, query, queryArgs...).Scan(&rowID)
+	err = tx.QueryRow(ctx, query, queryArgs...).Scan(&rowID)
 	if err != nil {
 		return nil, err
 	}
@@ -1258,10 +1260,10 @@ RETURNING "id"
 			orgExternalIDs = append(orgExternalIDs, orgMem.ID)
 		}
 		orgExternalIDs = lo.Uniq(orgExternalIDs)
-		rows, err := tx.QueryContext(
+		rows, err := tx.Query(
 			ctx,
 			`SELECT "id" FROM "organizations" WHERE "external_id" = any($1) ORDER BY array_position($1, external_id)`,
-			pgTextArray(orgExternalIDs),
+			orgExternalIDs,
 		)
 		if err != nil {
 			return nil, err
@@ -1291,7 +1293,7 @@ RETURNING "id"
 			RETURNING "id"
 			`
 			var relID int
-			err = tx.QueryRowContext(ctx, insertQuery, memberOrg.DateCreated, memberOrg.DateUpdated, rowID, orgRowID).Scan(&relID)
+			err = tx.QueryRow(ctx, insertQuery, memberOrg.DateCreated, memberOrg.DateUpdated, rowID, orgRowID).Scan(&relID)
 			if err != nil {
 				return nil, err
 			}
@@ -1302,9 +1304,9 @@ RETURNING "id"
 	queryArgs = []any{rowID}
 	if len(updatedOrganizationMemberIds) > 0 {
 		query += ` AND NOT "id" = any($2)`
-		queryArgs = append(queryArgs, pgIntArray(updatedOrganizationMemberIds))
+		queryArgs = append(queryArgs, updatedOrganizationMemberIds)
 	}
-	_, err = tx.ExecContext(ctx, query, queryArgs...)
+	_, err = tx.Exec(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -1322,7 +1324,7 @@ RETURNING "id"
 			RETURNING "id"
 			`
 			var relID int
-			err = tx.QueryRowContext(ctx, insertQuery, now, now, rowID, urnValue).Scan(&relID)
+			err = tx.QueryRow(ctx, insertQuery, now, now, rowID, urnValue).Scan(&relID)
 			if err != nil {
 				return nil, err
 			}
@@ -1333,14 +1335,14 @@ RETURNING "id"
 	queryArgs = []any{rowID}
 	if len(updatedPersonIdentifierIds) > 0 {
 		query += ` AND NOT "id" = any($2)`
-		queryArgs = append(queryArgs, pgIntArray(updatedPersonIdentifierIds))
+		queryArgs = append(queryArgs, updatedPersonIdentifierIds)
 	}
-	_, err = tx.ExecContext(ctx, query, queryArgs...)
+	_, err = tx.Exec(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1373,7 +1375,7 @@ LIMIT 1
 	`
 
 	p := &person{}
-	err := repo.client.QueryRowContext(ctx, query, externalID).Scan(
+	err := repo.client.QueryRow(ctx, query, externalID).Scan(
 		&p.id,
 		&p.dateCreated,
 		&p.dateUpdated,
@@ -1394,7 +1396,7 @@ LIMIT 1
 		&p.token,
 	)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrNotFound
 	}
 	if err != nil {
@@ -1438,7 +1440,7 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 	for _, urn := range urns {
 		ids = append(ids, urn.String())
 	}
-	rows, err := repo.client.QueryContext(ctx, query, pgTextArray(ids))
+	rows, err := repo.client.Query(ctx, query, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -1511,22 +1513,22 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 			BirthDate:           personRec.birthDate.String,
 			HonorificPrefix:     personRec.honorificPrefix.String,
 		}
-		if vals, err := fromNullStringArray(personRec.jobCategory.Bytes); err != nil {
+		if vals, err := fromPgTextArray(personRec.jobCategory); err != nil {
 			return nil, err
 		} else {
 			person.JobCategory = vals
 		}
-		if vals, err := fromNullStringArray(personRec.role.Bytes); err != nil {
+		if vals, err := fromPgTextArray(personRec.role); err != nil {
 			return nil, err
 		} else {
 			person.Role = vals
 		}
-		if vals, err := fromNullStringArray(personRec.objectClass.Bytes); err != nil {
+		if vals, err := fromPgTextArray(personRec.objectClass); err != nil {
 			return nil, err
 		} else {
 			person.ObjectClass = vals
 		}
-		if vals, err := fromNullStringArray(personRec.token.Bytes); err != nil {
+		if vals, err := fromPgTextArray(personRec.token); err != nil {
 			return nil, err
 		} else {
 			urns := make([]*models.URN, 0, len(vals))
@@ -1539,7 +1541,7 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 			}
 			person.Token = urns
 		}
-		if m, err := fromNullMap(personRec.settings.Bytes); err != nil {
+		if m, err := fromPgMap(personRec.settings); err != nil {
 			return nil, err
 		} else {
 			person.Settings = m
@@ -1584,7 +1586,7 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 }
 
 func (repo *repository) DeletePerson(ctx context.Context, id string) error {
-	_, err := repo.client.ExecContext(ctx, `DELETE FROM "people" WHERE "external_id" = $1`, id)
+	_, err := repo.client.Exec(ctx, `DELETE FROM "people" WHERE "external_id" = $1`, id)
 	return err
 }
 
@@ -1647,7 +1649,7 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 		tsQuery,
 		personSuggestLimit,
 	)
-	rows, err := repo.client.QueryContext(ctx, sqlQuery, tsQueryArgs...)
+	rows, err := repo.client.Query(ctx, sqlQuery, tsQueryArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -1698,22 +1700,17 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 }
 
 func (repo *repository) SetPersonRole(ctx context.Context, externalID string, roles []string) error {
-	res, err := repo.client.ExecContext(
+	res, err := repo.client.Exec(
 		ctx,
 		`UPDATE "people" SET date_updated = now(), role = $1 WHERE external_id = $2`,
-		nullJSON(roles),
+		pgjson(roles),
 		externalID,
 	)
 	if err != nil {
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
+	if res.RowsAffected() == 0 {
 		return models.ErrNotFound
 	}
 
@@ -1721,22 +1718,17 @@ func (repo *repository) SetPersonRole(ctx context.Context, externalID string, ro
 }
 
 func (repo *repository) SetPersonSettings(ctx context.Context, externalID string, settings map[string]string) error {
-	res, err := repo.client.ExecContext(
+	res, err := repo.client.Exec(
 		ctx,
 		`UPDATE "people" SET date_updated = now(), settings = $1 WHERE external_id = $2`,
-		nullJSON(settings),
+		pgjson(settings),
 		externalID,
 	)
 	if err != nil {
 		return err
 	}
 
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
+	if res.RowsAffected() == 0 {
 		return models.ErrNotFound
 	}
 
@@ -1806,7 +1798,7 @@ SELECT
 FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	`
 
-	rows, err := repo.client.QueryContext(ctx, query, cursor.LastID, personPageLimit)
+	rows, err := repo.client.Query(ctx, query, cursor.LastID, personPageLimit)
 	if err != nil {
 		return nil, newCursor, err
 	}
@@ -1852,7 +1844,7 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	}
 
 	var total int
-	err = repo.client.QueryRowContext(ctx, `SELECT COUNT(*) AS "total" FROM "people"`).Scan(&total)
+	err = repo.client.QueryRow(ctx, `SELECT COUNT(*) AS "total" FROM "people"`).Scan(&total)
 	if err != nil {
 		return nil, newCursor, err
 	}
@@ -1866,7 +1858,7 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 }
 
 func (repo *repository) GetPersonIDActive(ctx context.Context, active bool) ([]string, error) {
-	rows, err := repo.client.QueryContext(ctx, `SELECT "external_id" FROM "people" WHERE active = $1`, active)
+	rows, err := repo.client.Query(ctx, `SELECT "external_id" FROM "people" WHERE active = $1`, active)
 	if err != nil {
 		return nil, err
 	}
@@ -1889,11 +1881,11 @@ func (repo *repository) GetPersonIDActive(ctx context.Context, active bool) ([]s
 }
 
 func (repo *repository) SetPeopleActive(ctx context.Context, active bool, externalIDs ...string) error {
-	_, err := repo.client.ExecContext(
+	_, err := repo.client.Exec(
 		ctx,
 		`UPDATE "people" SET date_updated = now(), active = $1 WHERE "external_id" = any($2)`,
 		active,
-		pgTextArray(externalIDs),
+		externalIDs,
 	)
 	if err != nil {
 		return err

@@ -1,15 +1,13 @@
 package repository
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ugent-library/crypt"
 )
@@ -48,21 +46,6 @@ func toTSQuery(query string) (string, []any) {
 	return tsQuery, queryArgs
 }
 
-func openClient(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: make this configurable
-	db.SetMaxIdleConns(2)
-	db.SetMaxOpenConns(10)
-	db.SetConnMaxLifetime(time.Hour)
-	db.SetConnMaxIdleTime(time.Minute)
-
-	return db, nil
-}
-
 func encryptMessage(key []byte, message string) (string, error) {
 	cryptedMsgInBytes, err := crypt.Encrypt(key, []byte(message))
 	if err != nil {
@@ -86,18 +69,6 @@ func decryptMessage(key []byte, cryptedMsg string) (string, error) {
 	return string(msgInBytes), nil
 }
 
-func pgTextArray(values []string) pgtype.TextArray {
-	pgValues := pgtype.TextArray{}
-	pgValues.Set(values)
-	return pgValues
-}
-
-func pgIntArray(values []int) pgtype.Int4Array {
-	pgValues := pgtype.Int4Array{}
-	pgValues.Set(values)
-	return pgValues
-}
-
 func vacuum(values []string) []string {
 	newValues := make([]string, 0, len(values))
 	for _, val := range values {
@@ -108,7 +79,7 @@ func vacuum(values []string) []string {
 	return newValues
 }
 
-func fromNullStringArray(data []byte) ([]string, error) {
+func fromPgTextArray(data []byte) ([]string, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -119,7 +90,7 @@ func fromNullStringArray(data []byte) ([]string, error) {
 	return values, nil
 }
 
-func fromNullMap(data []byte) (map[string]string, error) {
+func fromPgMap(data []byte) (map[string]string, error) {
 	if data == nil {
 		return nil, nil
 	}
@@ -130,17 +101,14 @@ func fromNullMap(data []byte) (map[string]string, error) {
 	return m, nil
 }
 
-func nullString(val string) pgtype.Text {
+func pgtext(val string) pgtype.Text {
 	if val == "" {
-		return pgtype.Text{String: val, Status: pgtype.Null}
+		return pgtype.Text{String: val, Valid: false}
 	}
-	return pgtype.Text{String: val, Status: pgtype.Present}
+	return pgtype.Text{String: val, Valid: true}
 }
 
-func nullJSON(val any) pgtype.JSONB {
+func pgjson(val any) []byte {
 	bytes, _ := json.Marshal(val)
-	if bytes == nil {
-		return pgtype.JSONB{Bytes: bytes, Status: pgtype.Null}
-	}
-	return pgtype.JSONB{Bytes: bytes, Status: pgtype.Present}
+	return bytes
 }
