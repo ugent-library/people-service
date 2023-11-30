@@ -3,8 +3,7 @@ version: '3.5'
 # requirement: run "docker build -t people-service ." in order to create image people-service
 services:
   dbmigrate:
-    #image: ugentlib/people-service-tern
-    image: people-service-tern
+    image: ugentlib/people-service-tern
     container_name: people_service_tern
     env_file: docker/.env
     depends_on:
@@ -13,8 +12,7 @@ services:
 
   people_service_server:
     container_name: people_service_server
-    #image: ugentlib/people-service:latest
-    image: people-service
+    image: ugentlib/people-service:latest
     depends_on:
       postgres:
         condition: service_healthy
