@@ -3,7 +3,6 @@ package cli
 import (
 	"github.com/spf13/cobra"
 	"github.com/ugent-library/people-service/ldapsync"
-	"github.com/ugent-library/people-service/models"
 )
 
 var ldapSyncCmd = &cobra.Command{
@@ -17,8 +16,8 @@ var ldapSyncCmd = &cobra.Command{
 		}
 
 		importer := ldapsync.NewSynchronizer(repo, ugentLdapClient)
-		return importer.Sync(func(person *models.Person) {
-			logger.Infof("saved person %s to database", person.ID)
+		return importer.Sync(func(msg string) {
+			logger.Infof(msg)
 		})
 	},
 }

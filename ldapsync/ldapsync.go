@@ -3,12 +3,12 @@ package ldapsync
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"slices"
 	"sort"
 	"time"
 
+	"github.com/bluele/gcache"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/samber/lo"
 	"github.com/ugent-library/people-service/models"
@@ -16,23 +16,31 @@ import (
 )
 
 type Synchronizer struct {
-	repository      models.Repository
-	ugentLdapClient *ugentldap.Client
+	repository        models.Repository
+	ugentLdapClient   *ugentldap.Client
+	organizationCache gcache.Cache
 }
 
 func NewSynchronizer(repo models.Repository, ugentLdapClient *ugentldap.Client) *Synchronizer {
 	return &Synchronizer{
 		repository:      repo,
 		ugentLdapClient: ugentLdapClient,
+		organizationCache: gcache.New(100).
+			Expiration(time.Minute).
+			LRU().
+			LoaderFunc(func(key any) (any, error) {
+				return repo.GetOrganizationsByIdentifier(context.TODO(), models.NewURN("ugent_id", key.(string)))
+			}).Build(),
 	}
 }
 
-// TODO: set all to active=false, and then set found records to active=true. Needed: repository transaction
-func (si *Synchronizer) Sync(cb func(*models.Person)) error {
+func (si *Synchronizer) Sync(cb func(string)) error {
 	ctx := context.TODO()
 	newActiveIDs := []string{}
+
 	err := si.ugentLdapClient.SearchPeople(ldapPersonQuery, func(ldapEntry *ldap.Entry) error {
 		newPerson, err := si.ldapEntryToPerson(ldapEntry)
+
 		if err != nil {
 			return err
 		}
@@ -40,7 +48,6 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 		var oldPeople []*models.Person
 
 		historicUgentIDs := newPerson.GetIdentifierByNS("historic_ugent_id")
-		fmt.Fprintf(os.Stderr, "ldap person: name: %s, historic_ugent_id: %+v\n", newPerson.Name, historicUgentIDs)
 		if len(historicUgentIDs) > 0 {
 			oldPeople, err = si.repository.GetPeopleByIdentifier(ctx, historicUgentIDs...)
 			if err != nil {
@@ -56,25 +63,22 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 			if err != nil {
 				return err
 			}
-			cb(newPerson)
+			cb(fmt.Sprintf("person record %s: created", newPerson.ID))
 			newActiveIDs = append(newActiveIDs, newPerson.ID)
 		} else {
 			// delete older versions with same historic_ugent_id
 			if len(oldPeople) > 1 {
 				for _, person := range oldPeople[1:] {
-					fmt.Fprintf(os.Stderr, "deleting old person %s\n", person.ID)
 					err := si.repository.DeletePerson(ctx, person.ID)
 					if err != nil {
 						return err
 					}
+					cb(fmt.Sprintf("person record %s: deleted", person.ID))
 				}
 			}
 
 			// insert updated version
 			oldPerson := oldPeople[0]
-
-			fmt.Fprintf(os.Stderr,
-				"found old person %s for %s\n", oldPerson.ID, oldPerson.Name)
 
 			newActiveIDs = append(newActiveIDs, oldPerson.ID)
 
@@ -102,8 +106,6 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 			oldPerson.Email = newPerson.Email
 			oldPerson.GivenName = newPerson.GivenName
 			oldPerson.FamilyName = newPerson.FamilyName
-			oldPerson.PreferredGivenName = newPerson.PreferredGivenName
-			oldPerson.PreferredFamilyName = newPerson.PreferredFamilyName
 			oldPerson.Name = newPerson.Name
 			oldPerson.JobCategory = newPerson.JobCategory
 			oldPerson.HonorificPrefix = newPerson.HonorificPrefix
@@ -123,6 +125,7 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 				}
 			}
 
+			// prepare for comparison
 			if len(oldPerson.Organization) == 0 {
 				oldPerson.Organization = nil
 			}
@@ -132,7 +135,14 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 			if len(oldPerson.ObjectClass) == 0 {
 				oldPerson.ObjectClass = nil
 			}
+			if len(oldPerson.Identifier) == 0 {
+				oldPerson.Identifier = nil
+			}
+			if len(oldPerson.Token) == 0 {
+				oldPerson.Token = nil
+			}
 			if reflect.DeepEqual(oldPerson, oldStoredPerson) {
+				cb(fmt.Sprintf("person record %s: no update", oldPerson.ID))
 				return nil
 			}
 
@@ -140,7 +150,7 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 			if err != nil {
 				return err
 			}
-			cb(oldPerson)
+			cb(fmt.Sprintf("person record %s: updated", oldPerson.ID))
 		}
 
 		return nil
@@ -150,15 +160,13 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "processed %d ldap people\n", len(newActiveIDs))
+	cb(fmt.Sprintf("processed %d ldap records", len(newActiveIDs)))
 
 	// deactivate people
 	activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
 	if err != nil {
 		return err
 	}
-
-	fmt.Fprintf(os.Stderr, "found %d active people in db\n", len(activeIDs))
 
 	inactiveIDs := []string{}
 	for _, activeID := range activeIDs {
@@ -168,8 +176,6 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 	}
 	activeIDs = nil
 
-	fmt.Fprintf(os.Stderr, "found %d active people in db that should be inactive\n", len(inactiveIDs))
-
 	chunkedList := []string{}
 	chunkSize := 100
 	for len(inactiveIDs) > 0 {
@@ -177,22 +183,26 @@ func (si *Synchronizer) Sync(cb func(*models.Person)) error {
 		id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
 		chunkedList = append(chunkedList, id)
 		if len(chunkedList) >= chunkSize {
+			for _, id := range chunkedList {
+				cb(fmt.Sprintf("set person record %s to active=false", id))
+			}
 			si.repository.SetPeopleActive(ctx, false, chunkedList...)
 			chunkedList = nil
 		}
 	}
 	if len(chunkedList) > 0 {
+		for _, id := range chunkedList {
+			cb(fmt.Sprintf("set person record %s to active=false", id))
+		}
 		si.repository.SetPeopleActive(ctx, false, chunkedList...)
 	}
 
 	return err
 }
 
-// ldapEntryToPerson maps ldap entry to new Person
 func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person, error) {
 	newPerson := models.NewPerson()
 	newPerson.Active = true
-	ctx := context.TODO()
 
 	for _, attr := range ldapEntry.Attributes {
 		for _, val := range attr.Values {
@@ -203,14 +213,10 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person
 				newPerson.AddIdentifier(models.NewURN("historic_ugent_id", val))
 			case "ugentBarcode":
 				newPerson.AddIdentifier(models.NewURN("ugent_barcode", val))
-			case "givenName":
-				newPerson.GivenName = val
 			case "ugentPreferredGivenName":
-				newPerson.PreferredGivenName = val
-			case "sn":
-				newPerson.FamilyName = val
+				newPerson.GivenName = val
 			case "ugentPreferredSn":
-				newPerson.PreferredFamilyName = val
+				newPerson.FamilyName = val
 			case "displayName":
 				newPerson.Name = val
 			case "ugentBirthDate":
@@ -224,11 +230,12 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person
 			case "objectClass":
 				newPerson.AddObjectClass(val)
 			case "departmentNumber":
-				realOrgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("ugent_id", val))
-				// ignore for now. Maybe tomorrow on the next run
+				entries, err := si.organizationCache.Get(val)
 				if err != nil {
 					return nil, err
 				}
+				realOrgs := entries.([]*models.Organization)
+
 				if len(realOrgs) == 0 {
 					continue
 				}

@@ -89,11 +89,15 @@ or store them in file `.env` in the root of your folder (important: exclude `exp
 
 # Run database migrations
 
-Before starting the application you should run any pending database migrations.
+We use [tern](https://github.com/jackc/tern) for database migrations.
 
-In production we use [tern](https://github.com/jackc/tern). Make sure
-that directories `ent/migrate/migrations` (for atlas) and `etc/migrations` (for tern) are kept in sync. And note that tern uses a different naming for sql
-files (prefix is a padded number instead of a timestamp)
+Before starting the application you should run any pending database migrations:
+
+```
+. .env
+tern status --conn-string $PEOPLE_DB_URL -m etc/migrations
+tern migrate --conn-string $PEOPLE_DB_URL -m etc/migrations
+```
 
 # Start the api server (openapi)
 

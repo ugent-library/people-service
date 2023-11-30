@@ -1,0 +1,51 @@
+version: '3.5'
+
+# requirement: run "docker build -t people-service ." in order to create image people-service
+services:
+  dbmigrate:
+    #image: ugentlib/people-service-tern
+    image: people-service-tern
+    container_name: people_service_tern
+    env_file: docker/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  people_service_server:
+    container_name: people_service_server
+    #image: ugentlib/people-service:latest
+    image: people-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dbmigrate:
+        condition: service_completed_successfully
+    expose:
+      - 3999
+    ports:
+      - 3999:3999
+    volumes:
+      - ./docker/.env:/opt/people-service/.env
+    command: "/bin/sh -c \"cd /opt/people-service && ./people-service server\""
+
+  # connect to postgres:
+  #   connect to docker container
+  #   switch to postgres user: su - postgres
+  #   login as user "people": psql -U people
+  postgres:
+    container_name: postgres14
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: people
+      POSTGRES_USER: people
+      POSTGRES_PASSWORD: people
+    volumes:
+      - postgres01:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/pg_isready", "-U", "people"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+volumes:
+  postgres01:

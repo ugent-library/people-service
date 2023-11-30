@@ -54,18 +54,6 @@ type organizationMember struct {
 	organizationExternalID string
 }
 
-type organizationIdentifier struct {
-	id             int
-	organizationID int
-	value          string
-}
-
-type personIdentifier struct {
-	id       int
-	personID int
-	value    string
-}
-
 type organization struct {
 	id          int
 	externalID  pgtype.Text
@@ -75,6 +63,7 @@ type organization struct {
 	nameDut     pgtype.Text
 	nameEng     pgtype.Text
 	acronym     pgtype.Text
+	identifier  []byte
 }
 
 type person struct {
@@ -96,6 +85,7 @@ type person struct {
 	role                []byte
 	settings            []byte
 	objectClass         []byte
+	identifier          []byte
 }
 
 func NewRepository(config *Config) (*repository, error) {
@@ -108,77 +98,6 @@ func NewRepository(config *Config) (*repository, error) {
 		client: pool,
 		secret: []byte(config.AesKey),
 	}, nil
-}
-
-func (repo *repository) getOrganizationIdentifiers(ctx context.Context, organizationIDs ...int) ([]*organizationIdentifier, error) {
-	query := `
-SELECT
-	"id", "organization_id", "value" FROM "organization_identifiers"
-WHERE "organization_id" = any($1) ORDER BY array_position($1, organization_id), "value" ASC`
-	rows, err := repo.client.Query(
-		ctx,
-		query,
-		organizationIDs,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	organizationIdentifiers := []*organizationIdentifier{}
-
-	for rows.Next() {
-		oid := &organizationIdentifier{}
-		err := rows.Scan(&oid.id, &oid.organizationID, &oid.value)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		organizationIdentifiers = append(organizationIdentifiers, oid)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return organizationIdentifiers, nil
-}
-
-func (repo *repository) getPersonIdentifiers(ctx context.Context, personIDs ...int) ([]*personIdentifier, error) {
-	query := `
-SELECT
-	"id", "person_id", "value" FROM "person_identifiers"
-WHERE "person_id" = any($1) ORDER BY array_position($1, person_id), "value" ASC`
-	rows, err := repo.client.Query(
-		ctx,
-		query,
-		personIDs,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	pids := []*personIdentifier{}
-
-	for rows.Next() {
-		pid := &personIdentifier{}
-		err := rows.Scan(&pid.id, &pid.personID, &pid.value)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		pids = append(pids, pid)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return pids, nil
 }
 
 func (repo *repository) getOrganizationMembers(ctx context.Context, personIDs ...int) ([]*organizationMember, error) {
@@ -297,7 +216,8 @@ SELECT
 	"name_dut",
 	"name_eng",
 	"acronym",
-	"type"
+	"type",
+	"identifier"
 FROM organizations WHERE external_id = $1 LIMIT 1`
 
 	orgRec := &organization{}
@@ -310,6 +230,7 @@ FROM organizations WHERE external_id = $1 LIMIT 1`
 		&orgRec.nameEng,
 		&orgRec.acronym,
 		&orgRec.Type,
+		&orgRec.identifier,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrNotFound
@@ -340,11 +261,9 @@ SELECT
 	"type", 
 	"name_dut", 
 	"name_eng", 
-	"acronym"
-FROM "organizations" WHERE "id" IN (
-	SELECT "organization_id" FROM "organization_identifiers" WHERE "value" = any($1)
-)
-	`
+	"acronym",
+	"identifier"
+FROM "organizations" WHERE "identifier" ?| $1`
 
 	rows, err := repo.client.Query(ctx, query, urnValues)
 	if err != nil {
@@ -363,6 +282,7 @@ FROM "organizations" WHERE "id" IN (
 			&orgRec.nameDut,
 			&orgRec.nameEng,
 			&orgRec.acronym,
+			&orgRec.identifier,
 		)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -399,7 +319,7 @@ func (repo *repository) unpackOrganizations(ctx context.Context, orgRecs ...*org
 	rowIDs := make([]int, 0, len(orgRecs))
 	for _, orgRec := range orgRecs {
 		rowIDs = append(rowIDs, orgRec.id)
-		orgs = append(orgs, &models.Organization{
+		org := &models.Organization{
 			ID:          orgRec.externalID.String,
 			DateCreated: &orgRec.dateCreated.Time,
 			DateUpdated: &orgRec.dateUpdated.Time,
@@ -407,7 +327,19 @@ func (repo *repository) unpackOrganizations(ctx context.Context, orgRecs ...*org
 			NameDut:     orgRec.nameDut.String,
 			NameEng:     orgRec.nameEng.String,
 			Acronym:     orgRec.acronym.String,
-		})
+		}
+		orgs = append(orgs, org)
+		urnValues := []string{}
+		if err := json.Unmarshal(orgRec.identifier, &urnValues); err != nil {
+			return nil, err
+		}
+		for _, urnVal := range urnValues {
+			urn, err := models.ParseURN(urnVal)
+			if err != nil {
+				return nil, err
+			}
+			org.AddIdentifier(urn)
+		}
 	}
 
 	allOrganizationParents, err := repo.getOrganizationParents(ctx, rowIDs...)
@@ -427,22 +359,6 @@ func (repo *repository) unpackOrganizations(ctx context.Context, orgRecs ...*org
 					From:        op.from,
 					Until:       op.until,
 				})
-			}
-		}
-	}
-
-	allOrganizationIdentifiers, err := repo.getOrganizationIdentifiers(ctx, rowIDs...)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < len(orgRecs); i++ {
-		orgRec := orgRecs[i]
-		org := orgs[i]
-		for _, oid := range allOrganizationIdentifiers {
-			if oid.organizationID == orgRec.id {
-				urn, _ := models.ParseURN(oid.value)
-				org.AddIdentifier(urn)
 			}
 		}
 	}
@@ -484,9 +400,10 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 		"name_eng",
 		"type",
 		"acronym",
+		"identifier",
 		"ts_vals"
 	)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING "id"
 	`
 	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
@@ -502,6 +419,7 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 		pgtext(org.NameEng),
 		org.Type,
 		pgtext(org.Acronym),
+		pgjson(org.GetIdentifierQualifiedValues()),
 		pgjson(tsVals),
 	).Scan(&rowID)
 	if err != nil {
@@ -557,16 +475,6 @@ VALUES($1, $2, $3, $4, $5, $6);
 		}
 	}
 
-	// add identifiers
-	query = `
-INSERT INTO "organization_identifiers"
-	("organization_id", "date_created", "date_updated", "value")
-VALUES($1, $2, $3, $4)
-	`
-	for _, urn := range org.Identifier {
-		tx.Exec(ctx, query, rowID, now, now, urn.String())
-	}
-
 	// commit
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("unable to commit transaction: %w", err)
@@ -607,7 +515,8 @@ SET
 	"name_eng" = $4,
 	"type" = $5,
 	"acronym" = $6,
-	"ts_vals" = $7
+	"identifier" = $7,
+	"ts_vals" = $8
 WHERE "external_id" = $1
 RETURNING "id"
 	`
@@ -621,6 +530,7 @@ RETURNING "id"
 		pgtext(org.NameEng),
 		org.Type,
 		pgtext(org.Acronym),
+		pgjson(org.GetIdentifierQualifiedValues()),
 		pgjson(tsVals),
 	).Scan(&rowID)
 	if err != nil {
@@ -721,34 +631,6 @@ RETURNING "id"
 		return nil, err
 	}
 
-	// update identifiers
-	updatedRelIds = []int{}
-	urnValues := org.GetIdentifierQualifiedValues()
-
-	if len(urnValues) > 0 {
-		query = `
-INSERT INTO "organization_identifiers"("organization_id", "value", "date_created", "date_updated")
-VALUES($1, $2, $3, $4)
-ON CONFLICT("organization_id", "value")
-DO UPDATE SET date_updated = EXCLUDED.date_updated
-RETURNING "id"
-`
-		for _, urnValue := range urnValues {
-			var relID int
-			err = tx.QueryRow(ctx, query, rowID, urnValue, now, now).Scan(&relID)
-			if err != nil {
-				return nil, err
-			}
-			updatedRelIds = append(updatedRelIds, relID)
-		}
-	}
-
-	query = `DELETE FROM "organization_identifiers" WHERE "organization_id" = $1 AND NOT "id" = any($2)`
-	_, err = tx.Exec(ctx, query, rowID, updatedRelIds)
-	if err != nil {
-		return nil, err
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("unable to commit transaction: %w", err)
 	}
@@ -801,6 +683,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 		"name_dut", 
 		"name_eng", 
 		"acronym",
+		"identifier",
 		ts_rank(ts, %s) AS rank 
 		FROM "organizations" WHERE ts @@ %s LIMIT %d`,
 		tsQuery,
@@ -827,6 +710,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 			&orgRec.nameDut,
 			&orgRec.nameEng,
 			&orgRec.acronym,
+			&orgRec.identifier,
 			&rank,
 		)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -904,7 +788,8 @@ SELECT
 	"type",
 	"name_dut",
 	"name_eng", 
-	"acronym"
+	"acronym",
+	"identifier"
 FROM "organizations"
 WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 
@@ -926,6 +811,7 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 			&orgRec.nameDut,
 			&orgRec.nameEng,
 			&orgRec.acronym,
+			&orgRec.identifier,
 		)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, newCursor, nil
@@ -1009,6 +895,7 @@ INSERT INTO "people"
 		"settings",
 		"object_class",
 		"token",
+		"identifier",
 		"ts_vals"
 	)
 	VALUES
@@ -1030,7 +917,8 @@ INSERT INTO "people"
 		$15,
 		$16,
 		$17,
-		$18
+		$18,
+		$19
 	)
 	RETURNING "id"
 	`
@@ -1064,6 +952,7 @@ INSERT INTO "people"
 	}
 	queryArgs = append(queryArgs,
 		pgjson(tokens),
+		pgjson(p.GetIdentifierQualifiedValues()),
 		pgjson(vacuum([]string{p.Name})),
 	)
 
@@ -1119,15 +1008,6 @@ INSERT INTO "people"
 			}
 		}
 
-	}
-
-	// add identifiers
-	query = `
-INSERT INTO "person_identifiers"("person_id", "date_created", "date_updated", "value")
-VALUES($1, $2, $3, $4)
-	`
-	for _, urnValue := range p.GetIdentifierQualifiedValues() {
-		tx.Exec(ctx, query, rowID, now, now, urnValue)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -1210,8 +1090,9 @@ SET "date_updated" = $1,
 	"settings" = $13,
 	"object_class" = $14,
 	"token" = $15,
-	"ts_vals" = $16
-WHERE "external_id" = $17
+	"identifier" = $16,
+	"ts_vals" = $17
+WHERE "external_id" = $18
 RETURNING "id"
 	`
 	var rowID int
@@ -1242,6 +1123,7 @@ RETURNING "id"
 	}
 	queryArgs = append(queryArgs,
 		pgjson(tokens),
+		pgjson(p.GetIdentifierQualifiedValues()),
 		pgjson(vacuum([]string{p.Name})),
 		p.ID,
 	)
@@ -1311,37 +1193,6 @@ RETURNING "id"
 		return nil, err
 	}
 
-	// "person_identifiers"
-	updatedPersonIdentifierIds := []int{}
-	if len(p.Identifier) > 0 {
-		for _, urnValue := range p.GetIdentifierQualifiedValues() {
-			insertQuery := `
-			INSERT INTO "person_identifiers"
-				("date_created", "date_updated", "person_id", "value")
-			VALUES($1, $2, $3, $4)
-			ON CONFLICT("person_id", "value")
-			DO UPDATE SET date_updated = EXCLUDED.date_updated
-			RETURNING "id"
-			`
-			var relID int
-			err = tx.QueryRow(ctx, insertQuery, now, now, rowID, urnValue).Scan(&relID)
-			if err != nil {
-				return nil, err
-			}
-			updatedPersonIdentifierIds = append(updatedPersonIdentifierIds, relID)
-		}
-	}
-	query = `DELETE FROM "person_identifiers" WHERE "person_id" = $1`
-	queryArgs = []any{rowID}
-	if len(updatedPersonIdentifierIds) > 0 {
-		query += ` AND NOT "id" = any($2)`
-		queryArgs = append(queryArgs, updatedPersonIdentifierIds)
-	}
-	_, err = tx.Exec(ctx, query, queryArgs...)
-	if err != nil {
-		return nil, err
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -1369,7 +1220,8 @@ SELECT
 	"role",
 	"settings", 
 	"object_class",
-	"token"
+	"token",
+	"identifier"
 FROM "people" WHERE "external_id" = $1
 LIMIT 1
 	`
@@ -1394,6 +1246,7 @@ LIMIT 1
 		&p.settings,
 		&p.objectClass,
 		&p.token,
+		&p.identifier,
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -1431,9 +1284,9 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 		"role",
 		"settings", 
 		"object_class",
-		"token"
-	FROM "people"
-	WHERE "id" IN (SELECT "person_id" FROM "person_identifiers" WHERE "value" = any($1))
+		"token",
+		"identifier"
+	FROM "people" WHERE "identifier" ?| $1
 	`
 
 	ids := make([]string, 0, len(urns))
@@ -1469,6 +1322,7 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 			&p.settings,
 			&p.objectClass,
 			&p.token,
+			&p.identifier,
 		)
 		if err != nil {
 			return nil, err
@@ -1541,6 +1395,18 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 			}
 			person.Token = urns
 		}
+		if vals, err := fromPgTextArray(personRec.identifier); err != nil {
+			return nil, err
+		} else {
+			for _, val := range vals {
+				urn, err := models.ParseURN(val)
+				if err != nil {
+					return nil, err
+				}
+				person.AddIdentifier(urn)
+			}
+		}
+
 		if m, err := fromPgMap(personRec.settings); err != nil {
 			return nil, err
 		} else {
@@ -1563,21 +1429,6 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 					DateCreated: orgMember.dateCreated,
 					DateUpdated: orgMember.dateUpdated,
 				})
-			}
-		}
-	}
-
-	allPersonIdentifiers, err := repo.getPersonIdentifiers(ctx, rowIDs...)
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(personRecs); i++ {
-		personRec := personRecs[i]
-		person := people[i]
-		for _, pid := range allPersonIdentifiers {
-			if pid.personID == personRec.id {
-				urn, _ := models.ParseURN(pid.value)
-				person.AddIdentifier(urn)
 			}
 		}
 	}
@@ -1640,6 +1491,7 @@ SELECT
 	"settings", 
 	"object_class",
 	"token",
+	"identifier",
 	ts_rank(ts, %s) AS rank
 FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 `
@@ -1679,6 +1531,7 @@ FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
 			&personRec.settings,
 			&personRec.objectClass,
 			&personRec.token,
+			&personRec.identifier,
 			&rank,
 		)
 		if err != nil {
@@ -1794,7 +1647,8 @@ SELECT
 	"role",
 	"settings", 
 	"object_class",
-	"token"
+	"token",
+	"identifier"
 FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	`
 
@@ -1827,6 +1681,7 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 			&personRec.settings,
 			&personRec.objectClass,
 			&personRec.token,
+			&personRec.identifier,
 		)
 		if err != nil {
 			return nil, newCursor, err
