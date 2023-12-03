@@ -22,7 +22,7 @@ func (org *Organization) IsStored() bool {
 }
 
 func NewOrganization() *Organization {
-	org := &Organization{}
+	org := &Organization{Type: "organization"}
 	return org
 }
 

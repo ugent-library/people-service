@@ -136,9 +136,6 @@ ORDER BY array_position($1, person_id), "organization_id" ASC
 			&om.dateUpdated,
 			&om.organizationExternalID,
 		)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -191,9 +188,6 @@ ORDER by array_position($1, organization_id), "parent_organization_id" ASC
 			&op.until,
 			&op.parentOrganizationExternalID,
 		)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -284,9 +278,6 @@ FROM "organizations" WHERE "identifier" ?| $1`
 			&orgRec.acronym,
 			&orgRec.identifier,
 		)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -407,8 +398,7 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	RETURNING "id"
 	`
 	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
-	tsVals = append(tsVals, org.GetIdentifierValues()...)
-	tsVals = vacuum(tsVals)
+	tsVals = vacuum(append(tsVals, org.GetIdentifierValues()...))
 	var rowID int
 	err = tx.QueryRow(
 		ctx, query,
@@ -428,12 +418,13 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 
 	// add parents
 	parentOrganizationExternalIds := []string{}
-	parentOrganizationIDs := []int{}
 	for _, parent := range org.Parent {
 		parentOrganizationExternalIds = append(parentOrganizationExternalIds, parent.ID)
 	}
 	parentOrganizationExternalIds = lo.Uniq(parentOrganizationExternalIds)
-	query = `SELECT "id" FROM "organizations" WHERE "external_id" = any($1) ORDER BY array_position($1, external_id)`
+
+	pOrgRows := []*organization{}
+	query = `SELECT "id", "external_id" FROM "organizations" WHERE "external_id" = any($1)`
 	pRows, err := tx.Query(
 		ctx,
 		query,
@@ -444,27 +435,33 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	}
 	defer pRows.Close()
 	for pRows.Next() {
-		var rowID int
-		pRows.Scan(&rowID)
-		parentOrganizationIDs = append(parentOrganizationIDs, rowID)
+		o := &organization{}
+		pRows.Scan(&o.id, &o.externalID)
+		pOrgRows = append(pOrgRows, o)
 	}
-	parentOrganizationIDs = lo.Uniq(parentOrganizationIDs)
-	if len(parentOrganizationExternalIds) != len(parentOrganizationIDs) {
+
+	if len(parentOrganizationExternalIds) != len(pOrgRows) {
 		return nil, models.ErrInvalidReference
 	}
+
 	query = `
 INSERT INTO "organization_parents"
 	("organization_id", "parent_organization_id", "date_created", "date_updated", "from", "until")
 VALUES($1, $2, $3, $4, $5, $6);
 `
-	for i := 0; i < len(parentOrganizationIDs); i++ {
-		parentOrganizationID := parentOrganizationIDs[i]
-		orgParent := org.Parent[i]
+	for _, orgParent := range org.Parent {
+		var pOrgRow *organization
+		for _, po := range pOrgRows {
+			if po.externalID.String == orgParent.ID {
+				pOrgRow = po
+				break
+			}
+		}
 		_, err := tx.Exec(
 			ctx,
 			query,
 			rowID,
-			parentOrganizationID,
+			pOrgRow.id,
 			orgParent.DateCreated,
 			orgParent.DateUpdated,
 			orgParent.From,
@@ -504,8 +501,7 @@ func (repo *repository) UpdateOrganization(ctx context.Context, org *models.Orga
 
 	// update organization
 	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
-	tsVals = append(tsVals, org.GetIdentifierValues()...)
-	tsVals = vacuum(tsVals)
+	tsVals = vacuum(append(tsVals, org.GetIdentifierValues()...))
 
 	query := `
 UPDATE "organizations"
@@ -536,44 +532,37 @@ RETURNING "id"
 	if err != nil {
 		return nil, err
 	}
+
 	// update organization parents
-	var newOrganizationParents []organizationParent
+	var newOrganizationParents []*organizationParent
 	if len(org.Parent) > 0 {
 		parentOrganizationExternalIDs := []string{}
-		organizationParents := []*organizationParent{}
-
 		for _, parent := range org.Parent {
 			parentOrganizationExternalIDs = append(parentOrganizationExternalIDs, parent.ID)
 		}
 		parentOrganizationExternalIDs = lo.Uniq(parentOrganizationExternalIDs)
 
-		pRows, err := tx.Query(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1) ORDER BY array_position($1, external_id)", parentOrganizationExternalIDs)
+		pRows, err := tx.Query(ctx, "SELECT id, external_id FROM organizations WHERE external_id = any($1)", parentOrganizationExternalIDs)
 		if err != nil {
 			return nil, err
 		}
 		defer pRows.Close()
 
+		pOrgRows := []*organization{}
+
 		for pRows.Next() {
-			var parentID int
-			var parentExternalID string
-			err = pRows.Scan(&parentID, &parentExternalID)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, models.ErrInvalidReference
-			}
+			o := &organization{}
+			err = pRows.Scan(&o.id, &o.externalID)
 			if err != nil {
 				return nil, err
 			}
-			organizationParents = append(organizationParents, &organizationParent{
-				organizationID:               rowID,
-				parentOrganizationID:         parentID,
-				parentOrganizationExternalID: parentExternalID,
-			})
+			pOrgRows = append(pOrgRows, o)
 		}
 		if err := pRows.Err(); err != nil {
 			return nil, err
 		}
 
-		if len(parentOrganizationExternalIDs) != len(organizationParents) {
+		if len(parentOrganizationExternalIDs) != len(pOrgRows) {
 			return nil, models.ErrInvalidReference
 		}
 
@@ -585,13 +574,13 @@ RETURNING "id"
 				from:           parent.From,
 				until:          parent.Until,
 			}
-			for _, op := range organizationParents {
-				if op.parentOrganizationExternalID == parent.ID {
-					newOrganizationParent.parentOrganizationID = op.parentOrganizationID
+			for _, pOrgRow := range pOrgRows {
+				if pOrgRow.externalID.String == parent.ID {
+					newOrganizationParent.parentOrganizationID = pOrgRow.id
 					break
 				}
 			}
-			newOrganizationParents = append(newOrganizationParents, newOrganizationParent)
+			newOrganizationParents = append(newOrganizationParents, &newOrganizationParent)
 		}
 	}
 
@@ -713,9 +702,6 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 			&orgRec.identifier,
 			&rank,
 		)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -813,9 +799,6 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 			&orgRec.acronym,
 			&orgRec.identifier,
 		)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, newCursor, nil
-		}
 		if err != nil {
 			return nil, newCursor, err
 		}
@@ -843,7 +826,7 @@ WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2`
 	}
 
 	// set next cursor
-	if total > len(orgRecs) {
+	if len(orgRecs) >= organizationPageLimit {
 		newCursor = setCursor{
 			LastID: orgRecs[len(orgRecs)-1].id,
 		}
@@ -981,9 +964,6 @@ INSERT INTO "people"
 		for rows.Next() {
 			var rowID int
 			err = rows.Scan(&rowID)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, models.ErrInvalidReference
-			}
 			if err != nil {
 				return nil, err
 			}
@@ -1136,36 +1116,44 @@ RETURNING "id"
 	// update "organization_members"
 	updatedOrganizationMemberIds := []int{}
 	if len(p.Organization) > 0 {
-		orgRowIDs := make([]int, 0, len(p.Organization))
 		orgExternalIDs := make([]string, 0, len(p.Organization))
 		for _, orgMem := range p.Organization {
 			orgExternalIDs = append(orgExternalIDs, orgMem.ID)
 		}
 		orgExternalIDs = lo.Uniq(orgExternalIDs)
+
 		rows, err := tx.Query(
 			ctx,
-			`SELECT "id" FROM "organizations" WHERE "external_id" = any($1) ORDER BY array_position($1, external_id)`,
+			`SELECT "id", "external_id" FROM "organizations" WHERE "external_id" = any($1)`,
 			orgExternalIDs,
 		)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
+
+		orgRows := make([]*organization, 0, len(p.Organization))
 		for rows.Next() {
-			var rowID int
-			if err = rows.Scan(&rowID); err != nil {
+			o := &organization{}
+			if err = rows.Scan(&o.id, &o.externalID); err != nil {
 				return nil, err
 			}
-			orgRowIDs = append(orgRowIDs, rowID)
+			orgRows = append(orgRows, o)
 		}
-		orgRowIDs = lo.Uniq(orgRowIDs)
-		if len(orgExternalIDs) != len(orgRowIDs) {
+
+		if len(orgExternalIDs) != len(orgRows) {
 			return nil, models.ErrInvalidReference
 		}
 
-		for i := 0; i < len(orgRowIDs); i++ {
-			orgRowID := orgRowIDs[i]
-			memberOrg := p.Organization[i]
+		for _, orgMember := range p.Organization {
+			var orgId int
+			for _, orgRow := range orgRows {
+				if orgRow.externalID.String == orgMember.ID {
+					orgId = orgRow.id
+					break
+				}
+			}
+
 			insertQuery := `
 			INSERT INTO "organization_members"
 				("date_created", "date_updated", "person_id", "organization_id")
@@ -1175,19 +1163,16 @@ RETURNING "id"
 			RETURNING "id"
 			`
 			var relID int
-			err = tx.QueryRow(ctx, insertQuery, memberOrg.DateCreated, memberOrg.DateUpdated, rowID, orgRowID).Scan(&relID)
+			err = tx.QueryRow(ctx, insertQuery, orgMember.DateCreated, orgMember.DateUpdated, rowID, orgId).Scan(&relID)
 			if err != nil {
 				return nil, err
 			}
 			updatedOrganizationMemberIds = append(updatedOrganizationMemberIds, relID)
 		}
 	}
-	query = `DELETE FROM "organization_members" WHERE "person_id" = $1`
-	queryArgs = []any{rowID}
-	if len(updatedOrganizationMemberIds) > 0 {
-		query += ` AND NOT "id" = any($2)`
-		queryArgs = append(queryArgs, updatedOrganizationMemberIds)
-	}
+
+	query = `DELETE FROM "organization_members" WHERE "person_id" = $1 AND NOT "id" = any($2)`
+	queryArgs = []any{rowID, updatedOrganizationMemberIds}
 	_, err = tx.Exec(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, err
@@ -1703,7 +1688,8 @@ FROM "people" WHERE "id" > $1 ORDER BY "id" ASC LIMIT $2
 	if err != nil {
 		return nil, newCursor, err
 	}
-	if total > len(personRecs) {
+
+	if len(personRecs) >= personPageLimit {
 		newCursor = setCursor{
 			LastID: personRecs[len(personRecs)-1].id,
 		}
