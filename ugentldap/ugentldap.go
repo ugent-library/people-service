@@ -34,6 +34,7 @@ var ldapAttributes = []string{
 	"ugentAddressingTitle",
 	"displayName",
 	"departmentNumber",
+	"ugentFaculty",
 }
 
 func NewClient(config Config) *Client {
