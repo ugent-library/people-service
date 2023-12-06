@@ -12,7 +12,7 @@ type PersonService interface {
 	GetPeopleByIdentifier(context.Context, ...*URN) ([]*Person, error)
 	DeletePerson(context.Context, string) error
 	EachPerson(context.Context, func(*Person) bool) error
-	SetPersonOrcidToken(context.Context, string, string) error
+	SetPersonToken(context.Context, string, string, string) error
 	SetPersonOrcid(context.Context, string, string) error
 	SetPersonRole(context.Context, string, []string) error
 	SetPersonSettings(context.Context, string, map[string]string) error

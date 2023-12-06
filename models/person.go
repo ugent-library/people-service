@@ -15,7 +15,7 @@ type Person struct {
 	GivenName           string                `json:"given_name,omitempty"`
 	FamilyName          string                `json:"family_name,omitempty"`
 	Email               string                `json:"email,omitempty"`
-	Token               []*URN                `json:"token"`
+	Token               map[string]string     `json:"token"`
 	PreferredGivenName  string                `json:"preferred_given_name,omitempty"`
 	PreferredFamilyName string                `json:"preferred_family_name,omitempty"`
 	BirthDate           string                `json:"birth_date,omitempty"`
@@ -97,28 +97,16 @@ func (p *Person) GetIdentifierValuesByNS(ns string) []string {
 	return vals
 }
 
-func (p *Person) AddToken(ns string, value string) {
-	p.Token = append(p.Token, NewURN(ns, value))
-	sort.Sort(ByURN(p.Token))
-}
-
-func (p *Person) SetToken(tokens ...*URN) {
-	sort.Sort(ByURN(tokens))
-	p.Token = tokens
+func (p *Person) SetToken(typ string, val string) {
+	p.Token[typ] = val
 }
 
 func (p *Person) ClearToken() {
-	p.Token = nil
+	p.Token = map[string]string{}
 }
 
-func (p *Person) GetTokenValues(ns string) []string {
-	vals := make([]string, 0, len(p.Token))
-	for _, token := range p.Token {
-		if token.Namespace == ns {
-			vals = append(vals, token.Value)
-		}
-	}
-	return vals
+func (p *Person) GetTokenValue(typ string) string {
+	return p.Token[typ]
 }
 
 func (p *Person) SetRole(role ...string) {
@@ -176,8 +164,9 @@ func (p *Person) Dup() *Person {
 		BirthDate:           p.BirthDate,
 		HonorificPrefix:     p.HonorificPrefix,
 	}
-	for _, token := range p.Token {
-		newP.Token = append(newP.Token, token.Dup())
+	newP.Token = map[string]string{}
+	for typ, val := range p.Token {
+		newP.Token[typ] = val
 	}
 	for _, id := range p.Identifier {
 		newP.AddIdentifier(NewURN(id.Namespace, id.Value))

@@ -924,17 +924,16 @@ INSERT INTO "people"
 		pgjson(p.Settings),
 		pgjson(p.ObjectClass),
 	}
-	tokens := make([]string, 0, len(p.Token))
-	for _, token := range p.Token {
-		eToken, err := encryptMessage(repo.secret, token.Value)
+	eTokenMap := map[string]string{}
+	for typ, val := range p.Token {
+		eVal, err := encryptMessage(repo.secret, val)
 		if err != nil {
-			return nil, fmt.Errorf("unable to encrypt %s: %w", token.Namespace, err)
+			return nil, fmt.Errorf("unable to encrypt %s: %w", typ, err)
 		}
-		eURN := models.NewURN(token.Namespace, eToken)
-		tokens = append(tokens, eURN.String())
+		eTokenMap[typ] = eVal
 	}
 	queryArgs = append(queryArgs,
-		pgjson(tokens),
+		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
 		pgjson(vacuum([]string{p.Name})),
 	)
@@ -1017,17 +1016,16 @@ func (repo *repository) SetPersonOrcid(ctx context.Context, id string, orcid str
 }
 
 // TODO: make transaction safe
-func (repo *repository) SetPersonOrcidToken(ctx context.Context, id string, orcidToken string) error {
+func (repo *repository) SetPersonToken(ctx context.Context, id string, typ string, val string) error {
 	person, err := repo.GetPerson(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	person.Token = lo.Filter(person.Token, func(token *models.URN, idx int) bool {
-		return token.Namespace != "orcid"
-	})
-	if orcidToken != "" {
-		person.AddToken("orcid", orcidToken)
+	if val == "" {
+		delete(person.Token, typ)
+	} else {
+		person.Token[typ] = val
 	}
 
 	_, err = repo.UpdatePerson(ctx, person)
@@ -1092,17 +1090,16 @@ RETURNING "id"
 		pgjson(p.Settings),
 		pgjson(p.ObjectClass),
 	}
-	tokens := make([]string, 0, len(p.Token))
-	for _, token := range p.Token {
-		eToken, err := encryptMessage(repo.secret, token.Value)
+	eTokenMap := map[string]string{}
+	for typ, val := range p.Token {
+		eVal, err := encryptMessage(repo.secret, val)
 		if err != nil {
-			return nil, fmt.Errorf("unable to encrypt %s: %w", token.Namespace, err)
+			return nil, fmt.Errorf("unable to encrypt %s: %w", typ, err)
 		}
-		eURN := models.NewURN(token.Namespace, eToken)
-		tokens = append(tokens, eURN.String())
+		eTokenMap[typ] = eVal
 	}
 	queryArgs = append(queryArgs,
-		pgjson(tokens),
+		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
 		pgjson(vacuum([]string{p.Name})),
 		p.ID,
@@ -1367,18 +1364,18 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 		} else {
 			person.ObjectClass = vals
 		}
-		if vals, err := fromPgTextArray(personRec.token); err != nil {
+		if eTokenMap, err := fromPgMap(personRec.token); err != nil {
 			return nil, err
 		} else {
-			urns := make([]*models.URN, 0, len(vals))
-			for _, encToken := range vals {
-				urn, err := repo.descryptToken(encToken)
+			tokenMap := map[string]string{}
+			for typ, eVal := range eTokenMap {
+				val, err := repo.decryptToken(eVal)
 				if err != nil {
 					return nil, err
 				}
-				urns = append(urns, urn)
+				tokenMap[typ] = val
 			}
-			person.Token = urns
+			person.Token = tokenMap
 		}
 		if vals, err := fromPgTextArray(personRec.identifier); err != nil {
 			return nil, err
@@ -1755,14 +1752,10 @@ func (repo *repository) decodeCursor(encryptedCursor string, c any) error {
 	return json.Unmarshal(plaintext, c)
 }
 
-func (repo *repository) descryptToken(encToken string) (*models.URN, error) {
-	eURN, _ := models.ParseURN(encToken)
-	rawTokenVal, err := decryptMessage(repo.secret, eURN.Value)
+func (repo *repository) decryptToken(eVal string) (string, error) {
+	rawTokenVal, err := decryptMessage(repo.secret, eVal)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt %s token: %w", eURN.Namespace, err)
+		return "", fmt.Errorf("unable to decrypt token: %w", err)
 	}
-	return &models.URN{
-		Namespace: eURN.Namespace,
-		Value:     rawTokenVal,
-	}, nil
+	return rawTokenVal, nil
 }
