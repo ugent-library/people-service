@@ -45,7 +45,7 @@ func (urns ByURN) Swap(i, j int) {
 
 func (urns ByURN) Less(i, j int) bool {
 	if urns[i].Namespace != urns[j].Namespace {
-		return urns[i].Value < urns[j].Value
+		return urns[i].Namespace < urns[j].Namespace
 	}
 	return urns[i].Value < urns[j].Value
 }
