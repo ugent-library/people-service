@@ -613,7 +613,7 @@ func (s *Server) handleGetOrganizationsRequest(args [0]string, argsEscaped bool,
 		}
 	}()
 
-	var response *OrganizationListResponse
+	var response *OrganizationPagedListResponse
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -628,7 +628,7 @@ func (s *Server) handleGetOrganizationsRequest(args [0]string, argsEscaped bool,
 		type (
 			Request  = *GetOrganizationsRequest
 			Params   = struct{}
-			Response = *OrganizationListResponse
+			Response = *OrganizationPagedListResponse
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -672,20 +672,20 @@ func (s *Server) handleGetOrganizationsRequest(args [0]string, argsEscaped bool,
 	}
 }
 
-// handleGetOrganizationsByIdRequest handles GetOrganizationsById operation.
+// handleGetOrganizationsByIdentifierRequest handles GetOrganizationsByIdentifier operation.
 //
 // Get organization records by one of the extra identifiers.
 //
-// POST /get-organizations-by-id
-func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /get-organizations-by-identifier
+func (s *Server) handleGetOrganizationsByIdentifierRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("GetOrganizationsById"),
+		otelogen.OperationID("GetOrganizationsByIdentifier"),
 		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/get-organizations-by-id"),
+		semconv.HTTPRouteKey.String("/get-organizations-by-identifier"),
 	}
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), "GetOrganizationsById",
+	ctx, span := s.cfg.Tracer.Start(r.Context(), "GetOrganizationsByIdentifier",
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -710,15 +710,15 @@ func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped b
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: "GetOrganizationsById",
-			ID:   "GetOrganizationsById",
+			Name: "GetOrganizationsByIdentifier",
+			ID:   "GetOrganizationsByIdentifier",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityApiKey(ctx, "GetOrganizationsById", r)
+			sctx, ok, err := s.securityApiKey(ctx, "GetOrganizationsByIdentifier", r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
@@ -760,7 +760,7 @@ func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped b
 			return
 		}
 	}
-	request, close, err := s.decodeGetOrganizationsByIdRequest(r)
+	request, close, err := s.decodeGetOrganizationsByIdentifierRequest(r)
 	if err != nil {
 		err = &ogenerrors.DecodeRequestError{
 			OperationContext: opErrContext,
@@ -780,16 +780,16 @@ func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped b
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    "GetOrganizationsById",
+			OperationName:    "GetOrganizationsByIdentifier",
 			OperationSummary: "Get organization records by one of the extra identifiers",
-			OperationID:      "GetOrganizationsById",
+			OperationID:      "GetOrganizationsByIdentifier",
 			Body:             request,
 			Params:           middleware.Parameters{},
 			Raw:              r,
 		}
 
 		type (
-			Request  = *GetOrganizationsByIdRequest
+			Request  = *GetOrganizationsByIdentifierRequest
 			Params   = struct{}
 			Response = *OrganizationListResponse
 		)
@@ -802,12 +802,12 @@ func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped b
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetOrganizationsById(ctx, request)
+				response, err = s.h.GetOrganizationsByIdentifier(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetOrganizationsById(ctx, request)
+		response, err = s.h.GetOrganizationsByIdentifier(ctx, request)
 	}
 	if err != nil {
 		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
@@ -826,7 +826,7 @@ func (s *Server) handleGetOrganizationsByIdRequest(args [0]string, argsEscaped b
 		return
 	}
 
-	if err := encodeGetOrganizationsByIdResponse(response, w, span); err != nil {
+	if err := encodeGetOrganizationsByIdentifierResponse(response, w, span); err != nil {
 		recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -939,7 +939,7 @@ func (s *Server) handleGetPeopleRequest(args [0]string, argsEscaped bool, w http
 		}
 	}()
 
-	var response *PersonListResponse
+	var response *PersonPagedListResponse
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -954,7 +954,7 @@ func (s *Server) handleGetPeopleRequest(args [0]string, argsEscaped bool, w http
 		type (
 			Request  = *GetPeopleRequest
 			Params   = struct{}
-			Response = *PersonListResponse
+			Response = *PersonPagedListResponse
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -998,20 +998,20 @@ func (s *Server) handleGetPeopleRequest(args [0]string, argsEscaped bool, w http
 	}
 }
 
-// handleGetPeopleByIdRequest handles GetPeopleById operation.
+// handleGetPeopleByIdentifierRequest handles GetPeopleByIdentifier operation.
 //
 // Retrieve person records by one of the extra identifiers.
 //
-// POST /get-people-by-id
-func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /get-people-by-identifier
+func (s *Server) handleGetPeopleByIdentifierRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("GetPeopleById"),
+		otelogen.OperationID("GetPeopleByIdentifier"),
 		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/get-people-by-id"),
+		semconv.HTTPRouteKey.String("/get-people-by-identifier"),
 	}
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), "GetPeopleById",
+	ctx, span := s.cfg.Tracer.Start(r.Context(), "GetPeopleByIdentifier",
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -1036,15 +1036,15 @@ func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w 
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: "GetPeopleById",
-			ID:   "GetPeopleById",
+			Name: "GetPeopleByIdentifier",
+			ID:   "GetPeopleByIdentifier",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityApiKey(ctx, "GetPeopleById", r)
+			sctx, ok, err := s.securityApiKey(ctx, "GetPeopleByIdentifier", r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
@@ -1086,7 +1086,7 @@ func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w 
 			return
 		}
 	}
-	request, close, err := s.decodeGetPeopleByIdRequest(r)
+	request, close, err := s.decodeGetPeopleByIdentifierRequest(r)
 	if err != nil {
 		err = &ogenerrors.DecodeRequestError{
 			OperationContext: opErrContext,
@@ -1106,16 +1106,16 @@ func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w 
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    "GetPeopleById",
+			OperationName:    "GetPeopleByIdentifier",
 			OperationSummary: "Retrieve person records by one of the extra identifiers",
-			OperationID:      "GetPeopleById",
+			OperationID:      "GetPeopleByIdentifier",
 			Body:             request,
 			Params:           middleware.Parameters{},
 			Raw:              r,
 		}
 
 		type (
-			Request  = *GetPeopleByIdRequest
+			Request  = *GetPeopleByIdentifierRequest
 			Params   = struct{}
 			Response = *PersonListResponse
 		)
@@ -1128,12 +1128,12 @@ func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w 
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetPeopleById(ctx, request)
+				response, err = s.h.GetPeopleByIdentifier(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetPeopleById(ctx, request)
+		response, err = s.h.GetPeopleByIdentifier(ctx, request)
 	}
 	if err != nil {
 		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
@@ -1152,7 +1152,7 @@ func (s *Server) handleGetPeopleByIdRequest(args [0]string, argsEscaped bool, w 
 		return
 	}
 
-	if err := encodeGetPeopleByIdResponse(response, w, span); err != nil {
+	if err := encodeGetPeopleByIdentifierResponse(response, w, span); err != nil {
 		recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -1487,169 +1487,6 @@ func (s *Server) handleSetPersonOrcidRequest(args [0]string, argsEscaped bool, w
 	}
 }
 
-// handleSetPersonOrcidTokenRequest handles SetPersonOrcidToken operation.
-//
-// Update person ORCID token.
-//
-// POST /set-person-orcid-token
-func (s *Server) handleSetPersonOrcidTokenRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("SetPersonOrcidToken"),
-		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/set-person-orcid-token"),
-	}
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), "SetPersonOrcidToken",
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	s.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			s.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: "SetPersonOrcidToken",
-			ID:   "SetPersonOrcidToken",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securityApiKey(ctx, "SetPersonOrcidToken", r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "ApiKey",
-					Err:              err,
-				}
-				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					recordError("Security:ApiKey", err)
-				}
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-				recordError("Security", err)
-			}
-			return
-		}
-	}
-	request, close, err := s.decodeSetPersonOrcidTokenRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
-
-	var response *Person
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    "SetPersonOrcidToken",
-			OperationSummary: "Update person ORCID token",
-			OperationID:      "SetPersonOrcidToken",
-			Body:             request,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = *SetPersonOrcidTokenRequest
-			Params   = struct{}
-			Response = *Person
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.SetPersonOrcidToken(ctx, request)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.SetPersonOrcidToken(ctx, request)
-	}
-	if err != nil {
-		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
-			if err := encodeErrorResponse(errRes, w, span); err != nil {
-				recordError("Internal", err)
-			}
-			return
-		}
-		if errors.Is(err, ht.ErrNotImplemented) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
-			recordError("Internal", err)
-		}
-		return
-	}
-
-	if err := encodeSetPersonOrcidTokenResponse(response, w, span); err != nil {
-		recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
 // handleSetPersonRoleRequest handles SetPersonRole operation.
 //
 // Update person role.
@@ -1968,6 +1805,169 @@ func (s *Server) handleSetPersonSettingsRequest(args [0]string, argsEscaped bool
 	}
 
 	if err := encodeSetPersonSettingsResponse(response, w, span); err != nil {
+		recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleSetPersonTokenRequest handles SetPersonToken operation.
+//
+// Update person tokens.
+//
+// POST /set-person-token
+func (s *Server) handleSetPersonTokenRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("SetPersonToken"),
+		semconv.HTTPMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/set-person-token"),
+	}
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), "SetPersonToken",
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	s.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			s.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: "SetPersonToken",
+			ID:   "SetPersonToken",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityApiKey(ctx, "SetPersonToken", r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "ApiKey",
+					Err:              err,
+				}
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					recordError("Security:ApiKey", err)
+				}
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				recordError("Security", err)
+			}
+			return
+		}
+	}
+	request, close, err := s.decodeSetPersonTokenRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *Person
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    "SetPersonToken",
+			OperationSummary: "Update person tokens",
+			OperationID:      "SetPersonToken",
+			Body:             request,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = *SetPersonTokenRequest
+			Params   = struct{}
+			Response = *Person
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.SetPersonToken(ctx, request)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.SetPersonToken(ctx, request)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeSetPersonTokenResponse(response, w, span); err != nil {
 		recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)

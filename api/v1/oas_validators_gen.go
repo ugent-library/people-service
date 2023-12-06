@@ -41,18 +41,18 @@ func (s *GetOrganizationRequest) Validate() error {
 	return nil
 }
 
-func (s *GetOrganizationsByIdRequest) Validate() error {
+func (s *GetOrganizationsByIdentifierRequest) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if s.ID == nil {
+		if s.Identifier == nil {
 			return errors.New("nil is invalid value")
 		}
 		var failures []validate.FieldError
-		for i, elem := range s.ID {
+		for i, elem := range s.Identifier {
 			if err := func() error {
 				if err := (validate.String{
 					MinLength:    1,
@@ -79,7 +79,7 @@ func (s *GetOrganizationsByIdRequest) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "id",
+			Name:  "identifier",
 			Error: err,
 		})
 	}
@@ -89,18 +89,18 @@ func (s *GetOrganizationsByIdRequest) Validate() error {
 	return nil
 }
 
-func (s *GetPeopleByIdRequest) Validate() error {
+func (s *GetPeopleByIdentifierRequest) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if s.ID == nil {
+		if s.Identifier == nil {
 			return errors.New("nil is invalid value")
 		}
 		var failures []validate.FieldError
-		for i, elem := range s.ID {
+		for i, elem := range s.Identifier {
 			if err := func() error {
 				if err := (validate.String{
 					MinLength:    1,
@@ -127,7 +127,7 @@ func (s *GetPeopleByIdRequest) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "id",
+			Name:  "identifier",
 			Error: err,
 		})
 	}
@@ -191,6 +191,29 @@ func (s *OrganizationListResponse) Validate() error {
 	return nil
 }
 
+func (s *OrganizationPagedListResponse) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Data == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "data",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *PersonListResponse) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -214,28 +237,20 @@ func (s *PersonListResponse) Validate() error {
 	return nil
 }
 
-func (s *SetPersonOrcidRequest) Validate() error {
+func (s *PersonPagedListResponse) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    1,
-			MinLengthSet: true,
-			MaxLength:    0,
-			MaxLengthSet: false,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.ID)); err != nil {
-			return errors.Wrap(err, "string")
+		if s.Data == nil {
+			return errors.New("nil is invalid value")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "id",
+			Name:  "data",
 			Error: err,
 		})
 	}
@@ -245,7 +260,7 @@ func (s *SetPersonOrcidRequest) Validate() error {
 	return nil
 }
 
-func (s *SetPersonOrcidTokenRequest) Validate() error {
+func (s *SetPersonOrcidRequest) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
@@ -365,6 +380,75 @@ func (s *SetPersonSettingsRequest) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "id",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s *SetPersonTokenRequest) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.ID)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "id",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.Type)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "type",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.Token)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "token",
 			Error: err,
 		})
 	}

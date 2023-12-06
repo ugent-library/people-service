@@ -67,8 +67,8 @@ func encodeGetOrganizationsRequest(
 	return nil
 }
 
-func encodeGetOrganizationsByIdRequest(
-	req *GetOrganizationsByIdRequest,
+func encodeGetOrganizationsByIdentifierRequest(
+	req *GetOrganizationsByIdentifierRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -95,8 +95,8 @@ func encodeGetPeopleRequest(
 	return nil
 }
 
-func encodeGetPeopleByIdRequest(
-	req *GetPeopleByIdRequest,
+func encodeGetPeopleByIdentifierRequest(
+	req *GetPeopleByIdentifierRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -137,20 +137,6 @@ func encodeSetPersonOrcidRequest(
 	return nil
 }
 
-func encodeSetPersonOrcidTokenRequest(
-	req *SetPersonOrcidTokenRequest,
-	r *http.Request,
-) error {
-	const contentType = "application/json"
-	e := new(jx.Encoder)
-	{
-		req.Encode(e)
-	}
-	encoded := e.Bytes()
-	ht.SetBody(r, bytes.NewReader(encoded), contentType)
-	return nil
-}
-
 func encodeSetPersonRoleRequest(
 	req *SetPersonRoleRequest,
 	r *http.Request,
@@ -167,6 +153,20 @@ func encodeSetPersonRoleRequest(
 
 func encodeSetPersonSettingsRequest(
 	req *SetPersonSettingsRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeSetPersonTokenRequest(
+	req *SetPersonTokenRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

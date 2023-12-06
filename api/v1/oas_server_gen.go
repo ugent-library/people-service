@@ -31,25 +31,25 @@ type Handler interface {
 	// Get all organization records.
 	//
 	// POST /get-organizations
-	GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationListResponse, error)
-	// GetOrganizationsById implements GetOrganizationsById operation.
+	GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationPagedListResponse, error)
+	// GetOrganizationsByIdentifier implements GetOrganizationsByIdentifier operation.
 	//
 	// Get organization records by one of the extra identifiers.
 	//
-	// POST /get-organizations-by-id
-	GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error)
+	// POST /get-organizations-by-identifier
+	GetOrganizationsByIdentifier(ctx context.Context, req *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error)
 	// GetPeople implements GetPeople operation.
 	//
 	// Get all person records.
 	//
 	// POST /get-people
-	GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonListResponse, error)
-	// GetPeopleById implements GetPeopleById operation.
+	GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonPagedListResponse, error)
+	// GetPeopleByIdentifier implements GetPeopleByIdentifier operation.
 	//
 	// Retrieve person records by one of the extra identifiers.
 	//
-	// POST /get-people-by-id
-	GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error)
+	// POST /get-people-by-identifier
+	GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (*PersonListResponse, error)
 	// GetPerson implements GetPerson operation.
 	//
 	// Retrieve a single person record.
@@ -62,12 +62,6 @@ type Handler interface {
 	//
 	// POST /set-person-orcid
 	SetPersonOrcid(ctx context.Context, req *SetPersonOrcidRequest) (*Person, error)
-	// SetPersonOrcidToken implements SetPersonOrcidToken operation.
-	//
-	// Update person ORCID token.
-	//
-	// POST /set-person-orcid-token
-	SetPersonOrcidToken(ctx context.Context, req *SetPersonOrcidTokenRequest) (*Person, error)
 	// SetPersonRole implements SetPersonRole operation.
 	//
 	// Update person role.
@@ -80,6 +74,12 @@ type Handler interface {
 	//
 	// POST /set-person-settings
 	SetPersonSettings(ctx context.Context, req *SetPersonSettingsRequest) (*Person, error)
+	// SetPersonToken implements SetPersonToken operation.
+	//
+	// Update person tokens.
+	//
+	// POST /set-person-token
+	SetPersonToken(ctx context.Context, req *SetPersonTokenRequest) (*Person, error)
 	// SuggestOrganizations implements SuggestOrganizations operation.
 	//
 	// Search on organization records.

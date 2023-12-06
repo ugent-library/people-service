@@ -46,25 +46,25 @@ type Invoker interface {
 	// Get all organization records.
 	//
 	// POST /get-organizations
-	GetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (*OrganizationListResponse, error)
-	// GetOrganizationsById invokes GetOrganizationsById operation.
+	GetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (*OrganizationPagedListResponse, error)
+	// GetOrganizationsByIdentifier invokes GetOrganizationsByIdentifier operation.
 	//
 	// Get organization records by one of the extra identifiers.
 	//
-	// POST /get-organizations-by-id
-	GetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (*OrganizationListResponse, error)
+	// POST /get-organizations-by-identifier
+	GetOrganizationsByIdentifier(ctx context.Context, request *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error)
 	// GetPeople invokes GetPeople operation.
 	//
 	// Get all person records.
 	//
 	// POST /get-people
-	GetPeople(ctx context.Context, request *GetPeopleRequest) (*PersonListResponse, error)
-	// GetPeopleById invokes GetPeopleById operation.
+	GetPeople(ctx context.Context, request *GetPeopleRequest) (*PersonPagedListResponse, error)
+	// GetPeopleByIdentifier invokes GetPeopleByIdentifier operation.
 	//
 	// Retrieve person records by one of the extra identifiers.
 	//
-	// POST /get-people-by-id
-	GetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (*PersonListResponse, error)
+	// POST /get-people-by-identifier
+	GetPeopleByIdentifier(ctx context.Context, request *GetPeopleByIdentifierRequest) (*PersonListResponse, error)
 	// GetPerson invokes GetPerson operation.
 	//
 	// Retrieve a single person record.
@@ -77,12 +77,6 @@ type Invoker interface {
 	//
 	// POST /set-person-orcid
 	SetPersonOrcid(ctx context.Context, request *SetPersonOrcidRequest) (*Person, error)
-	// SetPersonOrcidToken invokes SetPersonOrcidToken operation.
-	//
-	// Update person ORCID token.
-	//
-	// POST /set-person-orcid-token
-	SetPersonOrcidToken(ctx context.Context, request *SetPersonOrcidTokenRequest) (*Person, error)
 	// SetPersonRole invokes SetPersonRole operation.
 	//
 	// Update person role.
@@ -95,6 +89,12 @@ type Invoker interface {
 	//
 	// POST /set-person-settings
 	SetPersonSettings(ctx context.Context, request *SetPersonSettingsRequest) (*Person, error)
+	// SetPersonToken invokes SetPersonToken operation.
+	//
+	// Update person tokens.
+	//
+	// POST /set-person-token
+	SetPersonToken(ctx context.Context, request *SetPersonTokenRequest) (*Person, error)
 	// SuggestOrganizations invokes SuggestOrganizations operation.
 	//
 	// Search on organization records.
@@ -492,12 +492,12 @@ func (c *Client) sendGetOrganization(ctx context.Context, request *GetOrganizati
 // Get all organization records.
 //
 // POST /get-organizations
-func (c *Client) GetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (*OrganizationListResponse, error) {
+func (c *Client) GetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (*OrganizationPagedListResponse, error) {
 	res, err := c.sendGetOrganizations(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendGetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (res *OrganizationListResponse, err error) {
+func (c *Client) sendGetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (res *OrganizationPagedListResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("GetOrganizations"),
 		semconv.HTTPMethodKey.String("POST"),
@@ -595,21 +595,21 @@ func (c *Client) sendGetOrganizations(ctx context.Context, request *GetOrganizat
 	return result, nil
 }
 
-// GetOrganizationsById invokes GetOrganizationsById operation.
+// GetOrganizationsByIdentifier invokes GetOrganizationsByIdentifier operation.
 //
 // Get organization records by one of the extra identifiers.
 //
-// POST /get-organizations-by-id
-func (c *Client) GetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
-	res, err := c.sendGetOrganizationsById(ctx, request)
+// POST /get-organizations-by-identifier
+func (c *Client) GetOrganizationsByIdentifier(ctx context.Context, request *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error) {
+	res, err := c.sendGetOrganizationsByIdentifier(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (res *OrganizationListResponse, err error) {
+func (c *Client) sendGetOrganizationsByIdentifier(ctx context.Context, request *GetOrganizationsByIdentifierRequest) (res *OrganizationListResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("GetOrganizationsById"),
+		otelogen.OperationID("GetOrganizationsByIdentifier"),
 		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/get-organizations-by-id"),
+		semconv.HTTPRouteKey.String("/get-organizations-by-identifier"),
 	}
 
 	// Run stopwatch.
@@ -624,7 +624,7 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
 
 	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, "GetOrganizationsById",
+	ctx, span := c.cfg.Tracer.Start(ctx, "GetOrganizationsByIdentifier",
 		trace.WithAttributes(otelAttrs...),
 		clientSpanKind,
 	)
@@ -642,7 +642,7 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
-	pathParts[0] = "/get-organizations-by-id"
+	pathParts[0] = "/get-organizations-by-identifier"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -650,7 +650,7 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 	if err != nil {
 		return res, errors.Wrap(err, "create request")
 	}
-	if err := encodeGetOrganizationsByIdRequest(request, r); err != nil {
+	if err := encodeGetOrganizationsByIdentifierRequest(request, r); err != nil {
 		return res, errors.Wrap(err, "encode request")
 	}
 
@@ -659,7 +659,7 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 		var satisfied bitset
 		{
 			stage = "Security:ApiKey"
-			switch err := c.securityApiKey(ctx, "GetOrganizationsById", r); {
+			switch err := c.securityApiKey(ctx, "GetOrganizationsByIdentifier", r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
@@ -695,7 +695,7 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 	defer resp.Body.Close()
 
 	stage = "DecodeResponse"
-	result, err := decodeGetOrganizationsByIdResponse(resp)
+	result, err := decodeGetOrganizationsByIdentifierResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -708,12 +708,12 @@ func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrgan
 // Get all person records.
 //
 // POST /get-people
-func (c *Client) GetPeople(ctx context.Context, request *GetPeopleRequest) (*PersonListResponse, error) {
+func (c *Client) GetPeople(ctx context.Context, request *GetPeopleRequest) (*PersonPagedListResponse, error) {
 	res, err := c.sendGetPeople(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendGetPeople(ctx context.Context, request *GetPeopleRequest) (res *PersonListResponse, err error) {
+func (c *Client) sendGetPeople(ctx context.Context, request *GetPeopleRequest) (res *PersonPagedListResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("GetPeople"),
 		semconv.HTTPMethodKey.String("POST"),
@@ -811,21 +811,21 @@ func (c *Client) sendGetPeople(ctx context.Context, request *GetPeopleRequest) (
 	return result, nil
 }
 
-// GetPeopleById invokes GetPeopleById operation.
+// GetPeopleByIdentifier invokes GetPeopleByIdentifier operation.
 //
 // Retrieve person records by one of the extra identifiers.
 //
-// POST /get-people-by-id
-func (c *Client) GetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (*PersonListResponse, error) {
-	res, err := c.sendGetPeopleById(ctx, request)
+// POST /get-people-by-identifier
+func (c *Client) GetPeopleByIdentifier(ctx context.Context, request *GetPeopleByIdentifierRequest) (*PersonListResponse, error) {
+	res, err := c.sendGetPeopleByIdentifier(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (res *PersonListResponse, err error) {
+func (c *Client) sendGetPeopleByIdentifier(ctx context.Context, request *GetPeopleByIdentifierRequest) (res *PersonListResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("GetPeopleById"),
+		otelogen.OperationID("GetPeopleByIdentifier"),
 		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/get-people-by-id"),
+		semconv.HTTPRouteKey.String("/get-people-by-identifier"),
 	}
 
 	// Run stopwatch.
@@ -840,7 +840,7 @@ func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRe
 	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
 
 	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, "GetPeopleById",
+	ctx, span := c.cfg.Tracer.Start(ctx, "GetPeopleByIdentifier",
 		trace.WithAttributes(otelAttrs...),
 		clientSpanKind,
 	)
@@ -858,7 +858,7 @@ func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRe
 	stage = "BuildURL"
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
-	pathParts[0] = "/get-people-by-id"
+	pathParts[0] = "/get-people-by-identifier"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -866,7 +866,7 @@ func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRe
 	if err != nil {
 		return res, errors.Wrap(err, "create request")
 	}
-	if err := encodeGetPeopleByIdRequest(request, r); err != nil {
+	if err := encodeGetPeopleByIdentifierRequest(request, r); err != nil {
 		return res, errors.Wrap(err, "encode request")
 	}
 
@@ -875,7 +875,7 @@ func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRe
 		var satisfied bitset
 		{
 			stage = "Security:ApiKey"
-			switch err := c.securityApiKey(ctx, "GetPeopleById", r); {
+			switch err := c.securityApiKey(ctx, "GetPeopleByIdentifier", r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
@@ -911,7 +911,7 @@ func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRe
 	defer resp.Body.Close()
 
 	stage = "DecodeResponse"
-	result, err := decodeGetPeopleByIdResponse(resp)
+	result, err := decodeGetPeopleByIdentifierResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1135,114 +1135,6 @@ func (c *Client) sendSetPersonOrcid(ctx context.Context, request *SetPersonOrcid
 	return result, nil
 }
 
-// SetPersonOrcidToken invokes SetPersonOrcidToken operation.
-//
-// Update person ORCID token.
-//
-// POST /set-person-orcid-token
-func (c *Client) SetPersonOrcidToken(ctx context.Context, request *SetPersonOrcidTokenRequest) (*Person, error) {
-	res, err := c.sendSetPersonOrcidToken(ctx, request)
-	return res, err
-}
-
-func (c *Client) sendSetPersonOrcidToken(ctx context.Context, request *SetPersonOrcidTokenRequest) (res *Person, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("SetPersonOrcidToken"),
-		semconv.HTTPMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/set-person-orcid-token"),
-	}
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, "SetPersonOrcidToken",
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/set-person-orcid-token"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "POST", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-	if err := encodeSetPersonOrcidTokenRequest(request, r); err != nil {
-		return res, errors.Wrap(err, "encode request")
-	}
-
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			stage = "Security:ApiKey"
-			switch err := c.securityApiKey(ctx, "SetPersonOrcidToken", r); {
-			case err == nil: // if NO error
-				satisfied[0] |= 1 << 0
-			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
-				// Skip this security.
-			default:
-				return res, errors.Wrap(err, "security \"ApiKey\"")
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
-		}
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	defer resp.Body.Close()
-
-	stage = "DecodeResponse"
-	result, err := decodeSetPersonOrcidTokenResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
 // SetPersonRole invokes SetPersonRole operation.
 //
 // Update person role.
@@ -1452,6 +1344,114 @@ func (c *Client) sendSetPersonSettings(ctx context.Context, request *SetPersonSe
 
 	stage = "DecodeResponse"
 	result, err := decodeSetPersonSettingsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// SetPersonToken invokes SetPersonToken operation.
+//
+// Update person tokens.
+//
+// POST /set-person-token
+func (c *Client) SetPersonToken(ctx context.Context, request *SetPersonTokenRequest) (*Person, error) {
+	res, err := c.sendSetPersonToken(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendSetPersonToken(ctx context.Context, request *SetPersonTokenRequest) (res *Person, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("SetPersonToken"),
+		semconv.HTTPMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/set-person-token"),
+	}
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, "SetPersonToken",
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/set-person-token"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeSetPersonTokenRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:ApiKey"
+			switch err := c.securityApiKey(ctx, "SetPersonToken", r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKey\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeSetPersonTokenResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

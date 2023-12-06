@@ -26,9 +26,9 @@ func (s *Service) GetPerson(ctx context.Context, req *GetPersonRequest) (*Person
 	return mapToExternalPerson(person), nil
 }
 
-func (s *Service) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error) {
-	urns := make([]*models.URN, 0, len(req.ID))
-	for _, id := range req.ID {
+func (s *Service) GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (*PersonListResponse, error) {
+	urns := make([]*models.URN, 0, len(req.Identifier))
+	for _, id := range req.Identifier {
 		urn, err := models.ParseURN(id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
@@ -48,13 +48,13 @@ func (s *Service) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) 
 	return res, nil
 }
 
-func (s *Service) GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonListResponse, error) {
+func (s *Service) GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonPagedListResponse, error) {
 	var people []*models.Person
 	var err error
 	var cursor string
 
-	if req.Cursor != "" {
-		people, cursor, err = s.repository.GetMorePeople(ctx, req.Cursor)
+	if req.Cursor.Value != "" {
+		people, cursor, err = s.repository.GetMorePeople(ctx, req.Cursor.Value)
 	} else {
 		people, cursor, err = s.repository.GetPeople(ctx)
 	}
@@ -62,7 +62,7 @@ func (s *Service) GetPeople(ctx context.Context, req *GetPeopleRequest) (*Person
 		return nil, err
 	}
 
-	res := &PersonListResponse{
+	res := &PersonPagedListResponse{
 		Data: make([]Person, 0, len(people)),
 	}
 	if cursor != "" {
@@ -102,8 +102,8 @@ func (s *Service) SetPersonOrcid(ctx context.Context, req *SetPersonOrcidRequest
 	return mapToExternalPerson(person), nil
 }
 
-func (s *Service) SetPersonOrcidToken(ctx context.Context, req *SetPersonOrcidTokenRequest) (*Person, error) {
-	if err := s.repository.SetPersonOrcidToken(ctx, req.ID, req.OrcidToken); err != nil {
+func (s *Service) SetPersonToken(ctx context.Context, req *SetPersonTokenRequest) (*Person, error) {
+	if err := s.repository.SetPersonToken(ctx, req.ID, req.Type, req.Token); err != nil {
 		return nil, err
 	}
 	person, err := s.repository.GetPerson(ctx, req.ID)
@@ -147,9 +147,9 @@ func (s *Service) GetOrganization(ctx context.Context, req *GetOrganizationReque
 	return mapToExternalOrganization(org), nil
 }
 
-func (s *Service) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
-	urns := make([]*models.URN, 0, len(req.ID))
-	for _, id := range req.ID {
+func (s *Service) GetOrganizationsByIdentifier(ctx context.Context, req *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error) {
+	urns := make([]*models.URN, 0, len(req.Identifier))
+	for _, id := range req.Identifier {
 		urn, err := models.ParseURN(id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
@@ -169,13 +169,13 @@ func (s *Service) GetOrganizationsById(ctx context.Context, req *GetOrganization
 	return res, nil
 }
 
-func (s *Service) GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationListResponse, error) {
+func (s *Service) GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationPagedListResponse, error) {
 	var organizations []*models.Organization
 	var err error
 	var cursor string
 
-	if req.Cursor != "" {
-		organizations, cursor, err = s.repository.GetMoreOrganizations(ctx, req.Cursor)
+	if req.Cursor.Value != "" {
+		organizations, cursor, err = s.repository.GetMoreOrganizations(ctx, req.Cursor.Value)
 	} else {
 		organizations, cursor, err = s.repository.GetOrganizations(ctx)
 	}
@@ -183,7 +183,7 @@ func (s *Service) GetOrganizations(ctx context.Context, req *GetOrganizationsReq
 		return nil, err
 	}
 
-	res := &OrganizationListResponse{
+	res := &OrganizationPagedListResponse{
 		Data: make([]Organization, 0, len(organizations)),
 	}
 	if cursor != "" {
@@ -215,7 +215,7 @@ func (s *Service) SuggestOrganizations(ctx context.Context, req *SuggestOrganiza
 func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 	var person *models.Person
 
-	if p.ID.Set {
+	if p.ID.Value != "" {
 		oldPerson, err := s.repository.GetPerson(ctx, p.ID.Value)
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, fmt.Errorf("cannot find person record %s to update", p.ID.Value)
@@ -236,8 +236,8 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 	person.SetJobCategory(p.JobCategory...)
 	person.SetObjectClass(p.ObjectClass...)
 	person.ClearToken()
-	for _, token := range p.Token {
-		person.AddToken(token.PropertyID, token.Value)
+	for typ, token := range p.Token.Value {
+		person.SetToken(typ, token)
 	}
 	person.PreferredGivenName = p.PreferredGivenName.Value
 	person.PreferredFamilyName = p.PreferredFamilyName.Value
@@ -247,9 +247,9 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 
 	ids := make([]*models.URN, 0, len(p.Identifier))
 	for _, identifier := range p.Identifier {
-		id, err := models.ParseURN(identifier.Value)
+		id, err := models.ParseURN(identifier)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", identifier.Value, models.ErrInvalidURN)
+			return nil, fmt.Errorf("failed to parse %s: %w", identifier, models.ErrInvalidURN)
 		}
 		ids = append(ids, id)
 	}
@@ -274,7 +274,7 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
 func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organization, error) {
 	var org *models.Organization
 
-	if o.ID.Set {
+	if o.ID.Value != "" {
 		oldOrg, err := s.repository.GetOrganization(ctx, o.ID.Value)
 		if errors.Is(err, models.ErrNotFound) {
 			return nil, fmt.Errorf("cannot find organization record \"%s\" to update", o.ID.Value)
@@ -305,9 +305,9 @@ func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organi
 
 	ids := make([]*models.URN, 0, len(o.Identifier))
 	for _, identifier := range o.Identifier {
-		id, err := models.ParseURN(identifier.Value)
+		id, err := models.ParseURN(identifier)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", identifier.Value, models.ErrInvalidURN)
+			return nil, fmt.Errorf("failed to parse %s: %w", identifier, models.ErrInvalidURN)
 		}
 		ids = append(ids, id)
 	}
@@ -389,10 +389,9 @@ func mapToExternalPerson(person *models.Person) *Person {
 	}
 	p.JobCategory = append(p.JobCategory, person.JobCategory...)
 	p.ObjectClass = append(p.ObjectClass, person.ObjectClass...)
-	for _, token := range person.Token {
-		p.Token = append(p.Token, newPropertyValue(token.Namespace, token.Value))
+	if len(person.Token) > 0 {
+		p.Token = NewOptStringMap(person.Token)
 	}
-
 	for _, orgMember := range person.Organization {
 		externalOrgMember := OrganizationMember{
 			ID:          orgMember.ID,
@@ -401,8 +400,9 @@ func mapToExternalPerson(person *models.Person) *Person {
 		}
 		p.Organization = append(p.Organization, externalOrgMember)
 	}
+	p.Identifier = make([]string, 0, len(person.Identifier))
 	for _, id := range person.Identifier {
-		p.Identifier = append(p.Identifier, newPropertyValue(id.Namespace, id.String()))
+		p.Identifier = append(p.Identifier, id.String())
 	}
 
 	p.Role = append(p.Role, person.Role...)
@@ -434,8 +434,9 @@ func mapToExternalOrganization(org *models.Organization) *Organization {
 	if org.NameEng != "" {
 		o.NameEng = NewOptString(org.NameEng)
 	}
+	o.Identifier = make([]string, 0, len(org.Identifier))
 	for _, id := range org.Identifier {
-		o.Identifier = append(o.Identifier, newPropertyValue(id.Namespace, id.String()))
+		o.Identifier = append(o.Identifier, id.String())
 	}
 	for _, organizationParent := range org.Parent {
 		op := OrganizationParent{
@@ -452,12 +453,4 @@ func mapToExternalOrganization(org *models.Organization) *Organization {
 	o.Type = NewOptString(org.Type)
 
 	return o
-}
-
-func newPropertyValue(propertyID string, value string) PropertyValue {
-	return PropertyValue{
-		Type:       "PropertyValue",
-		PropertyID: propertyID,
-		Value:      value,
-	}
 }

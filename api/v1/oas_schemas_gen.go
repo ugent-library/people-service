@@ -92,63 +92,63 @@ func (s *GetOrganizationRequest) SetID(val string) {
 	s.ID = val
 }
 
-// Ref: #/components/schemas/GetOrganizationsByIdRequest
-type GetOrganizationsByIdRequest struct {
-	ID []string `json:"id"`
+// Ref: #/components/schemas/GetOrganizationsByIdentifierRequest
+type GetOrganizationsByIdentifierRequest struct {
+	Identifier []string `json:"identifier"`
 }
 
-// GetID returns the value of ID.
-func (s *GetOrganizationsByIdRequest) GetID() []string {
-	return s.ID
+// GetIdentifier returns the value of Identifier.
+func (s *GetOrganizationsByIdentifierRequest) GetIdentifier() []string {
+	return s.Identifier
 }
 
-// SetID sets the value of ID.
-func (s *GetOrganizationsByIdRequest) SetID(val []string) {
-	s.ID = val
+// SetIdentifier sets the value of Identifier.
+func (s *GetOrganizationsByIdentifierRequest) SetIdentifier(val []string) {
+	s.Identifier = val
 }
 
 // Ref: #/components/schemas/GetOrganizationsRequest
 type GetOrganizationsRequest struct {
-	Cursor string `json:"cursor"`
+	Cursor OptString `json:"cursor"`
 }
 
 // GetCursor returns the value of Cursor.
-func (s *GetOrganizationsRequest) GetCursor() string {
+func (s *GetOrganizationsRequest) GetCursor() OptString {
 	return s.Cursor
 }
 
 // SetCursor sets the value of Cursor.
-func (s *GetOrganizationsRequest) SetCursor(val string) {
+func (s *GetOrganizationsRequest) SetCursor(val OptString) {
 	s.Cursor = val
 }
 
-// Ref: #/components/schemas/GetPeopleByIdRequest
-type GetPeopleByIdRequest struct {
-	ID []string `json:"id"`
+// Ref: #/components/schemas/GetPeopleByIdentifierRequest
+type GetPeopleByIdentifierRequest struct {
+	Identifier []string `json:"identifier"`
 }
 
-// GetID returns the value of ID.
-func (s *GetPeopleByIdRequest) GetID() []string {
-	return s.ID
+// GetIdentifier returns the value of Identifier.
+func (s *GetPeopleByIdentifierRequest) GetIdentifier() []string {
+	return s.Identifier
 }
 
-// SetID sets the value of ID.
-func (s *GetPeopleByIdRequest) SetID(val []string) {
-	s.ID = val
+// SetIdentifier sets the value of Identifier.
+func (s *GetPeopleByIdentifierRequest) SetIdentifier(val []string) {
+	s.Identifier = val
 }
 
 // Ref: #/components/schemas/GetPeopleRequest
 type GetPeopleRequest struct {
-	Cursor string `json:"cursor"`
+	Cursor OptString `json:"cursor"`
 }
 
 // GetCursor returns the value of Cursor.
-func (s *GetPeopleRequest) GetCursor() string {
+func (s *GetPeopleRequest) GetCursor() OptString {
 	return s.Cursor
 }
 
 // SetCursor sets the value of Cursor.
-func (s *GetPeopleRequest) SetCursor(val string) {
+func (s *GetPeopleRequest) SetCursor(val OptString) {
 	s.Cursor = val
 }
 
@@ -351,6 +351,52 @@ func (o OptString) Or(d string) string {
 	return d
 }
 
+// NewOptStringMap returns new OptStringMap with value set to v.
+func NewOptStringMap(v StringMap) OptStringMap {
+	return OptStringMap{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStringMap is optional StringMap.
+type OptStringMap struct {
+	Value StringMap
+	Set   bool
+}
+
+// IsSet returns true if OptStringMap was set.
+func (o OptStringMap) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStringMap) Reset() {
+	var v StringMap
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStringMap) SetTo(v StringMap) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStringMap) Get() (v StringMap, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStringMap) Or(d StringMap) StringMap {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // Ref: #/components/schemas/Organization
 type Organization struct {
 	ID          OptString            `json:"id"`
@@ -361,7 +407,7 @@ type Organization struct {
 	NameDut     OptString            `json:"name_dut"`
 	NameEng     OptString            `json:"name_eng"`
 	Parent      []OrganizationParent `json:"parent"`
-	Identifier  []PropertyValue      `json:"identifier"`
+	Identifier  []string             `json:"identifier"`
 }
 
 // GetID returns the value of ID.
@@ -405,7 +451,7 @@ func (s *Organization) GetParent() []OrganizationParent {
 }
 
 // GetIdentifier returns the value of Identifier.
-func (s *Organization) GetIdentifier() []PropertyValue {
+func (s *Organization) GetIdentifier() []string {
 	return s.Identifier
 }
 
@@ -450,29 +496,18 @@ func (s *Organization) SetParent(val []OrganizationParent) {
 }
 
 // SetIdentifier sets the value of Identifier.
-func (s *Organization) SetIdentifier(val []PropertyValue) {
+func (s *Organization) SetIdentifier(val []string) {
 	s.Identifier = val
 }
 
 // Ref: #/components/schemas/OrganizationListResponse
 type OrganizationListResponse struct {
-	Cursor OptString      `json:"cursor"`
-	Data   []Organization `json:"data"`
-}
-
-// GetCursor returns the value of Cursor.
-func (s *OrganizationListResponse) GetCursor() OptString {
-	return s.Cursor
+	Data []Organization `json:"data"`
 }
 
 // GetData returns the value of Data.
 func (s *OrganizationListResponse) GetData() []Organization {
 	return s.Data
-}
-
-// SetCursor sets the value of Cursor.
-func (s *OrganizationListResponse) SetCursor(val OptString) {
-	s.Cursor = val
 }
 
 // SetData sets the value of Data.
@@ -515,6 +550,32 @@ func (s *OrganizationMember) SetDateCreated(val OptDateTime) {
 // SetDateUpdated sets the value of DateUpdated.
 func (s *OrganizationMember) SetDateUpdated(val OptDateTime) {
 	s.DateUpdated = val
+}
+
+// Ref: #/components/schemas/OrganizationPagedListResponse
+type OrganizationPagedListResponse struct {
+	Cursor OptString      `json:"cursor"`
+	Data   []Organization `json:"data"`
+}
+
+// GetCursor returns the value of Cursor.
+func (s *OrganizationPagedListResponse) GetCursor() OptString {
+	return s.Cursor
+}
+
+// GetData returns the value of Data.
+func (s *OrganizationPagedListResponse) GetData() []Organization {
+	return s.Data
+}
+
+// SetCursor sets the value of Cursor.
+func (s *OrganizationPagedListResponse) SetCursor(val OptString) {
+	s.Cursor = val
+}
+
+// SetData sets the value of Data.
+func (s *OrganizationPagedListResponse) SetData(val []Organization) {
+	s.Data = val
 }
 
 // Ref: #/components/schemas/OrganizationParent
@@ -586,12 +647,12 @@ type Person struct {
 	GivenName           OptString            `json:"given_name"`
 	FamilyName          OptString            `json:"family_name"`
 	Email               OptString            `json:"email"`
-	Token               []PropertyValue      `json:"token"`
+	Token               OptStringMap         `json:"token"`
 	PreferredGivenName  OptString            `json:"preferred_given_name"`
 	PreferredFamilyName OptString            `json:"preferred_family_name"`
 	BirthDate           OptString            `json:"birth_date"`
 	HonorificPrefix     OptString            `json:"honorific_prefix"`
-	Identifier          []PropertyValue      `json:"identifier"`
+	Identifier          []string             `json:"identifier"`
 	Organization        []OrganizationMember `json:"organization"`
 	JobCategory         []string             `json:"job_category"`
 	Role                []string             `json:"role"`
@@ -640,7 +701,7 @@ func (s *Person) GetEmail() OptString {
 }
 
 // GetToken returns the value of Token.
-func (s *Person) GetToken() []PropertyValue {
+func (s *Person) GetToken() OptStringMap {
 	return s.Token
 }
 
@@ -665,7 +726,7 @@ func (s *Person) GetHonorificPrefix() OptString {
 }
 
 // GetIdentifier returns the value of Identifier.
-func (s *Person) GetIdentifier() []PropertyValue {
+func (s *Person) GetIdentifier() []string {
 	return s.Identifier
 }
 
@@ -735,7 +796,7 @@ func (s *Person) SetEmail(val OptString) {
 }
 
 // SetToken sets the value of Token.
-func (s *Person) SetToken(val []PropertyValue) {
+func (s *Person) SetToken(val OptStringMap) {
 	s.Token = val
 }
 
@@ -760,7 +821,7 @@ func (s *Person) SetHonorificPrefix(val OptString) {
 }
 
 // SetIdentifier sets the value of Identifier.
-func (s *Person) SetIdentifier(val []PropertyValue) {
+func (s *Person) SetIdentifier(val []string) {
 	s.Identifier = val
 }
 
@@ -791,13 +852,7 @@ func (s *Person) SetObjectClass(val []string) {
 
 // Ref: #/components/schemas/PersonListResponse
 type PersonListResponse struct {
-	Cursor OptString `json:"cursor"`
-	Data   []Person  `json:"data"`
-}
-
-// GetCursor returns the value of Cursor.
-func (s *PersonListResponse) GetCursor() OptString {
-	return s.Cursor
+	Data []Person `json:"data"`
 }
 
 // GetData returns the value of Data.
@@ -805,13 +860,34 @@ func (s *PersonListResponse) GetData() []Person {
 	return s.Data
 }
 
+// SetData sets the value of Data.
+func (s *PersonListResponse) SetData(val []Person) {
+	s.Data = val
+}
+
+// Ref: #/components/schemas/PersonPagedListResponse
+type PersonPagedListResponse struct {
+	Cursor OptString `json:"cursor"`
+	Data   []Person  `json:"data"`
+}
+
+// GetCursor returns the value of Cursor.
+func (s *PersonPagedListResponse) GetCursor() OptString {
+	return s.Cursor
+}
+
+// GetData returns the value of Data.
+func (s *PersonPagedListResponse) GetData() []Person {
+	return s.Data
+}
+
 // SetCursor sets the value of Cursor.
-func (s *PersonListResponse) SetCursor(val OptString) {
+func (s *PersonPagedListResponse) SetCursor(val OptString) {
 	s.Cursor = val
 }
 
 // SetData sets the value of Data.
-func (s *PersonListResponse) SetData(val []Person) {
+func (s *PersonPagedListResponse) SetData(val []Person) {
 	s.Data = val
 }
 
@@ -824,43 +900,6 @@ func (s *PersonSettings) init() PersonSettings {
 		*s = m
 	}
 	return m
-}
-
-// Ref: #/components/schemas/PropertyValue
-type PropertyValue struct {
-	Type       string `json:"type"`
-	PropertyID string `json:"property_id"`
-	Value      string `json:"value"`
-}
-
-// GetType returns the value of Type.
-func (s *PropertyValue) GetType() string {
-	return s.Type
-}
-
-// GetPropertyID returns the value of PropertyID.
-func (s *PropertyValue) GetPropertyID() string {
-	return s.PropertyID
-}
-
-// GetValue returns the value of Value.
-func (s *PropertyValue) GetValue() string {
-	return s.Value
-}
-
-// SetType sets the value of Type.
-func (s *PropertyValue) SetType(val string) {
-	s.Type = val
-}
-
-// SetPropertyID sets the value of PropertyID.
-func (s *PropertyValue) SetPropertyID(val string) {
-	s.PropertyID = val
-}
-
-// SetValue sets the value of Value.
-func (s *PropertyValue) SetValue(val string) {
-	s.Value = val
 }
 
 // Ref: #/components/schemas/SetPersonOrcidRequest
@@ -887,32 +926,6 @@ func (s *SetPersonOrcidRequest) SetID(val string) {
 // SetOrcid sets the value of Orcid.
 func (s *SetPersonOrcidRequest) SetOrcid(val string) {
 	s.Orcid = val
-}
-
-// Ref: #/components/schemas/SetPersonOrcidTokenRequest
-type SetPersonOrcidTokenRequest struct {
-	ID         string `json:"id"`
-	OrcidToken string `json:"orcid_token"`
-}
-
-// GetID returns the value of ID.
-func (s *SetPersonOrcidTokenRequest) GetID() string {
-	return s.ID
-}
-
-// GetOrcidToken returns the value of OrcidToken.
-func (s *SetPersonOrcidTokenRequest) GetOrcidToken() string {
-	return s.OrcidToken
-}
-
-// SetID sets the value of ID.
-func (s *SetPersonOrcidTokenRequest) SetID(val string) {
-	s.ID = val
-}
-
-// SetOrcidToken sets the value of OrcidToken.
-func (s *SetPersonOrcidTokenRequest) SetOrcidToken(val string) {
-	s.OrcidToken = val
 }
 
 // Ref: #/components/schemas/SetPersonRoleRequest
@@ -970,6 +983,55 @@ func (s *SetPersonSettingsRequest) SetSettings(val SetPersonSettingsRequestSetti
 type SetPersonSettingsRequestSettings map[string]string
 
 func (s *SetPersonSettingsRequestSettings) init() SetPersonSettingsRequestSettings {
+	m := *s
+	if m == nil {
+		m = map[string]string{}
+		*s = m
+	}
+	return m
+}
+
+// Ref: #/components/schemas/SetPersonTokenRequest
+type SetPersonTokenRequest struct {
+	ID    string `json:"id"`
+	Type  string `json:"type"`
+	Token string `json:"token"`
+}
+
+// GetID returns the value of ID.
+func (s *SetPersonTokenRequest) GetID() string {
+	return s.ID
+}
+
+// GetType returns the value of Type.
+func (s *SetPersonTokenRequest) GetType() string {
+	return s.Type
+}
+
+// GetToken returns the value of Token.
+func (s *SetPersonTokenRequest) GetToken() string {
+	return s.Token
+}
+
+// SetID sets the value of ID.
+func (s *SetPersonTokenRequest) SetID(val string) {
+	s.ID = val
+}
+
+// SetType sets the value of Type.
+func (s *SetPersonTokenRequest) SetType(val string) {
+	s.Type = val
+}
+
+// SetToken sets the value of Token.
+func (s *SetPersonTokenRequest) SetToken(val string) {
+	s.Token = val
+}
+
+// Ref: #/components/schemas/StringMap
+type StringMap map[string]string
+
+func (s *StringMap) init() StringMap {
 	m := *s
 	if m == nil {
 		m = map[string]string{}

@@ -55,7 +55,7 @@ func encodeGetOrganizationResponse(response *Organization, w http.ResponseWriter
 	return nil
 }
 
-func encodeGetOrganizationsResponse(response *OrganizationListResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeGetOrganizationsResponse(response *OrganizationPagedListResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -69,7 +69,7 @@ func encodeGetOrganizationsResponse(response *OrganizationListResponse, w http.R
 	return nil
 }
 
-func encodeGetOrganizationsByIdResponse(response *OrganizationListResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeGetOrganizationsByIdentifierResponse(response *OrganizationListResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -83,7 +83,7 @@ func encodeGetOrganizationsByIdResponse(response *OrganizationListResponse, w ht
 	return nil
 }
 
-func encodeGetPeopleResponse(response *PersonListResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeGetPeopleResponse(response *PersonPagedListResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -97,7 +97,7 @@ func encodeGetPeopleResponse(response *PersonListResponse, w http.ResponseWriter
 	return nil
 }
 
-func encodeGetPeopleByIdResponse(response *PersonListResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeGetPeopleByIdentifierResponse(response *PersonListResponse, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -139,20 +139,6 @@ func encodeSetPersonOrcidResponse(response *Person, w http.ResponseWriter, span 
 	return nil
 }
 
-func encodeSetPersonOrcidTokenResponse(response *Person, w http.ResponseWriter, span trace.Span) error {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(200)
-	span.SetStatus(codes.Ok, http.StatusText(200))
-
-	e := new(jx.Encoder)
-	response.Encode(e)
-	if _, err := e.WriteTo(w); err != nil {
-		return errors.Wrap(err, "write")
-	}
-
-	return nil
-}
-
 func encodeSetPersonRoleResponse(response *Person, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -168,6 +154,20 @@ func encodeSetPersonRoleResponse(response *Person, w http.ResponseWriter, span t
 }
 
 func encodeSetPersonSettingsResponse(response *Person, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeSetPersonTokenResponse(response *Person, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
