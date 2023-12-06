@@ -6,31 +6,21 @@ import (
 	"reflect"
 	"slices"
 	"sort"
-	"time"
 
-	"github.com/bluele/gcache"
 	"github.com/go-ldap/ldap/v3"
-	"github.com/samber/lo"
 	"github.com/ugent-library/people-service/models"
 	"github.com/ugent-library/people-service/ugentldap"
 )
 
 type Synchronizer struct {
-	repository        models.Repository
-	ugentLdapClient   *ugentldap.Client
-	organizationCache gcache.Cache
+	repository      models.Repository
+	ugentLdapClient *ugentldap.Client
 }
 
 func NewSynchronizer(repo models.Repository, ugentLdapClient *ugentldap.Client) *Synchronizer {
 	return &Synchronizer{
 		repository:      repo,
 		ugentLdapClient: ugentLdapClient,
-		organizationCache: gcache.New(100).
-			Expiration(time.Minute).
-			LRU().
-			LoaderFunc(func(key any) (any, error) {
-				return repo.GetOrganizationsByIdentifier(context.TODO(), models.NewURN("ugent_id", key.(string)))
-			}).Build(),
 	}
 }
 
@@ -39,7 +29,7 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 	newActiveIDs := []string{}
 
 	err := si.ugentLdapClient.SearchPeople(ldapPersonQuery, func(ldapEntry *ldap.Entry) error {
-		newPerson, err := si.ldapEntryToPerson(ldapEntry)
+		newPerson, err := si.ldapEntryToPerson(ldapEntry, cb)
 
 		if err != nil {
 			return err
@@ -200,9 +190,12 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 	return err
 }
 
-func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person, error) {
+func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry, cb func(string)) (*models.Person, error) {
 	newPerson := models.NewPerson()
 	newPerson.Active = true
+
+	depIds := []string{}
+	facultyIds := []string{}
 
 	for _, attr := range ldapEntry.Attributes {
 		for _, val := range attr.Values {
@@ -229,40 +222,50 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry) (*models.Person
 				newPerson.HonorificPrefix = val
 			case "objectClass":
 				newPerson.AddObjectClass(val)
+			case "ugentFaculty":
+				facultyIds = append(facultyIds, val)
 			case "departmentNumber":
-				entries, err := si.organizationCache.Get(val)
-				if err != nil {
-					return nil, err
-				}
-				realOrgs := entries.([]*models.Organization)
-
-				if len(realOrgs) == 0 {
-					continue
-				}
-				// ugent_id not unique, and some of them are not in use anymore
-				// e.g. LW06 used to be "Latijn en Grieks", now "Taalkunde"
-				now := time.Now()
-				realOrgs = lo.Filter(realOrgs, func(org *models.Organization, index int) bool {
-					if org.Type != "department" {
-						return false
-					}
-					var validOrganizationParent *models.OrganizationParent
-					for _, oParent := range org.Parent {
-						if oParent.From.Before(now) && (oParent.Until == nil || oParent.Until.After(now)) {
-							validOrganizationParent = oParent
-							break
-						}
-					}
-					return validOrganizationParent != nil
-				})
-				if len(realOrgs) == 0 {
-					continue
-				}
-				newOrgMember := models.NewOrganizationMember(realOrgs[0].ID)
-				newPerson.AddOrganizationMember(newOrgMember)
+				depIds = append(depIds, val)
 			}
 		}
 	}
 
+	orgIds := []string{}
+
+	if len(depIds) > 0 {
+		orgIds = append(orgIds, depIds...)
+	}
+	if len(facultyIds) > 0 {
+		orgIds = append(orgIds, facultyIds...)
+	}
+
+	for _, orgId := range orgIds {
+		orgs, err := si.repository.GetOrganizationsByIdentifier(context.TODO(), models.NewURN("biblio_id", orgId))
+		if err != nil {
+			return nil, err
+		}
+
+		var org *models.Organization
+		if len(orgs) == 0 {
+			cb(fmt.Sprintf("adding dummy organization %s for person with name '%s'", orgId, newPerson.Name))
+			o, err := si.addDummyOrg(orgId)
+			if err != nil {
+				return nil, err
+			}
+			org = o
+		} else {
+			org = orgs[0]
+		}
+		newOrgMember := models.NewOrganizationMember(org.ID)
+		newPerson.AddOrganizationMember(newOrgMember)
+	}
+
 	return newPerson, nil
+}
+
+func (si *Synchronizer) addDummyOrg(orgId string) (*models.Organization, error) {
+	org := models.NewOrganization()
+	org.NameEng = orgId
+	org.AddIdentifier(models.NewURN("biblio_id", orgId))
+	return si.repository.CreateOrganization(context.TODO(), org)
 }
