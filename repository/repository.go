@@ -18,10 +18,8 @@ import (
 )
 
 const (
-	personPageLimit          = 200
-	organizationPageLimit    = 200
-	organizationSuggestLimit = 10
-	personSuggestLimit       = 10
+	personPageLimit       = 200
+	organizationPageLimit = 200
 )
 
 type repository struct {
@@ -659,8 +657,9 @@ func (repo *repository) EachOrganization(ctx context.Context, cb func(*models.Or
 	return nil
 }
 
-func (repo *repository) SuggestOrganizations(ctx context.Context, query string) ([]*models.Organization, error) {
-	tsQuery, tsQueryArgs := toTSQuery(query)
+func (repo *repository) SuggestOrganizations(ctx context.Context, params models.OrganizationSuggestParams) ([]*models.Organization, error) {
+	params = params.MergeDefault()
+	tsQuery, tsQueryArgs := toTSQuery(params.Query)
 
 	sqlQuery := fmt.Sprintf(
 		`SELECT
@@ -677,7 +676,7 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, query string) 
 		FROM "organizations" WHERE ts @@ %s LIMIT %d`,
 		tsQuery,
 		tsQuery,
-		organizationSuggestLimit)
+		params.Limit)
 
 	rows, err := repo.client.Query(ctx, sqlQuery, tsQueryArgs...)
 	if err != nil {
@@ -851,6 +850,9 @@ func (repo *repository) CreatePerson(ctx context.Context, p *models.Person) (*mo
 		orgMember.DateCreated = &now
 		orgMember.DateUpdated = &now
 	}
+
+	// ensure biblio_id
+	p.EnsureBiblioID()
 
 	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -1043,6 +1045,8 @@ func (repo *repository) UpdatePerson(ctx context.Context, p *models.Person) (*mo
 			orgMember.DateUpdated = &now
 		}
 	}
+	// ensure biblio_id
+	p.EnsureBiblioID()
 
 	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -1451,8 +1455,9 @@ func (repo *repository) EachPerson(ctx context.Context, cb func(*models.Person) 
 
 }
 
-func (repo *repository) SuggestPeople(ctx context.Context, query string) ([]*models.Person, error) {
-	tsQuery, tsQueryArgs := toTSQuery(query)
+func (repo *repository) SuggestPeople(ctx context.Context, params models.PersonSuggestParams) ([]*models.Person, error) {
+	params = params.MergeDefault()
+	tsQuery, tsQueryArgs := toTSQuery(params.Query)
 	sqlQuery := `
 SELECT
 	"id",
@@ -1475,13 +1480,15 @@ SELECT
 	"token",
 	"identifier",
 	ts_rank(ts, %s) AS rank
-FROM "people" WHERE ts @@ %s ORDER BY "rank" DESC LIMIT %d
+FROM "people" WHERE ts @@ %s AND "active" = any(%s)  ORDER BY "rank" DESC LIMIT %d
 `
+	tsQueryArgs = append(tsQueryArgs, params.Active)
 	sqlQuery = fmt.Sprintf(
 		sqlQuery,
 		tsQuery,
 		tsQuery,
-		personSuggestLimit,
+		fmt.Sprintf("$%d", len(tsQueryArgs)),
+		params.Limit,
 	)
 	rows, err := repo.client.Query(ctx, sqlQuery, tsQueryArgs...)
 	if err != nil {

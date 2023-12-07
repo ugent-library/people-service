@@ -259,6 +259,52 @@ func (o OptDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptPersonSettings returns new OptPersonSettings with value set to v.
 func NewOptPersonSettings(v PersonSettings) OptPersonSettings {
 	return OptPersonSettings{
@@ -1042,12 +1088,23 @@ func (s *StringMap) init() StringMap {
 
 // Ref: #/components/schemas/SuggestOrganizationsRequest
 type SuggestOrganizationsRequest struct {
+	Limit OptInt `json:"limit"`
 	Query string `json:"query"`
+}
+
+// GetLimit returns the value of Limit.
+func (s *SuggestOrganizationsRequest) GetLimit() OptInt {
+	return s.Limit
 }
 
 // GetQuery returns the value of Query.
 func (s *SuggestOrganizationsRequest) GetQuery() string {
 	return s.Query
+}
+
+// SetLimit sets the value of Limit.
+func (s *SuggestOrganizationsRequest) SetLimit(val OptInt) {
+	s.Limit = val
 }
 
 // SetQuery sets the value of Query.
@@ -1057,7 +1114,14 @@ func (s *SuggestOrganizationsRequest) SetQuery(val string) {
 
 // Ref: #/components/schemas/SuggestPeopleRequest
 type SuggestPeopleRequest struct {
-	Query string `json:"query"`
+	Limit  OptInt `json:"limit"`
+	Query  string `json:"query"`
+	Active []bool `json:"active"`
+}
+
+// GetLimit returns the value of Limit.
+func (s *SuggestPeopleRequest) GetLimit() OptInt {
+	return s.Limit
 }
 
 // GetQuery returns the value of Query.
@@ -1065,7 +1129,22 @@ func (s *SuggestPeopleRequest) GetQuery() string {
 	return s.Query
 }
 
+// GetActive returns the value of Active.
+func (s *SuggestPeopleRequest) GetActive() []bool {
+	return s.Active
+}
+
+// SetLimit sets the value of Limit.
+func (s *SuggestPeopleRequest) SetLimit(val OptInt) {
+	s.Limit = val
+}
+
 // SetQuery sets the value of Query.
 func (s *SuggestPeopleRequest) SetQuery(val string) {
 	s.Query = val
+}
+
+// SetActive sets the value of Active.
+func (s *SuggestPeopleRequest) SetActive(val []bool) {
+	s.Active = val
 }

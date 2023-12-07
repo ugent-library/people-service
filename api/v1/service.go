@@ -76,7 +76,11 @@ func (s *Service) GetPeople(ctx context.Context, req *GetPeopleRequest) (*Person
 }
 
 func (s *Service) SuggestPeople(ctx context.Context, req *SuggestPeopleRequest) (*PersonListResponse, error) {
-	people, err := s.repository.SuggestPeople(ctx, req.Query)
+	people, err := s.repository.SuggestPeople(ctx, models.PersonSuggestParams{
+		Query:  req.Query,
+		Active: req.Active,
+		Limit:  uint32(req.Limit.Value),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +201,10 @@ func (s *Service) GetOrganizations(ctx context.Context, req *GetOrganizationsReq
 }
 
 func (s *Service) SuggestOrganizations(ctx context.Context, req *SuggestOrganizationsRequest) (*OrganizationListResponse, error) {
-	orgs, err := s.repository.SuggestOrganizations(ctx, req.Query)
+	orgs, err := s.repository.SuggestOrganizations(ctx, models.OrganizationSuggestParams{
+		Query: req.Query,
+		Limit: uint32(req.Limit.Value),
+	})
 	if err != nil {
 		return nil, err
 	}

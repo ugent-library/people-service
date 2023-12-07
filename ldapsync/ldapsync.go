@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"slices"
 	"sort"
 
 	"github.com/go-ldap/ldap/v3"
@@ -28,7 +27,7 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 	ctx := context.TODO()
 	newActiveIDs := []string{}
 
-	err := si.ugentLdapClient.SearchPeople(ldapPersonQuery, func(ldapEntry *ldap.Entry) error {
+	err := si.ugentLdapClient.SearchPeople(PersonQuery, func(ldapEntry *ldap.Entry) error {
 		newPerson, err := si.ldapEntryToPerson(ldapEntry, cb)
 
 		if err != nil {
@@ -73,24 +72,20 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 			newActiveIDs = append(newActiveIDs, oldPerson.ID)
 
 			oldStoredPerson := oldPerson.Dup()
-			var gismoId string
-			var orcid string
+			keepIds := make([]*models.URN, 0, 3)
 			for _, id := range oldPerson.Identifier {
 				switch id.Namespace {
-				case "orcid":
-					orcid = id.Value
-				case "gismo_id":
-					gismoId = id.Value
+				case "orcid", "gismo_id", "biblio_id":
+					keepIds = append(keepIds, id.Dup())
 				}
 			}
 			oldPerson.ClearIdentifier()
 			oldPerson.SetIdentifier(newPerson.Identifier...)
-			if gismoId != "" {
-				oldPerson.AddIdentifier(models.NewURN("gismo_id", gismoId))
+			for _, id := range keepIds {
+				oldPerson.AddIdentifier(id)
 			}
-			if orcid != "" {
-				oldPerson.AddIdentifier(models.NewURN("orcid", orcid))
-			}
+			oldPerson.EnsureBiblioID() // P.S. also done in repository for other reasons
+
 			oldPerson.Active = true
 			oldPerson.BirthDate = newPerson.BirthDate
 			oldPerson.Email = newPerson.Email
@@ -129,8 +124,9 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 				oldPerson.Identifier = nil
 			}
 			if len(oldPerson.Token) == 0 {
-				oldPerson.Token = nil
+				oldPerson.Token = map[string]string{}
 			}
+
 			if reflect.DeepEqual(oldPerson, oldStoredPerson) {
 				cb(fmt.Sprintf("person record %s: no update", oldPerson.ID))
 				return nil
@@ -151,41 +147,41 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 	}
 
 	cb(fmt.Sprintf("processed %d ldap records", len(newActiveIDs)))
-
-	// deactivate people
-	activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
-	if err != nil {
-		return err
-	}
-
-	inactiveIDs := []string{}
-	for _, activeID := range activeIDs {
-		if !slices.Contains(newActiveIDs, activeID) {
-			inactiveIDs = append(inactiveIDs, activeID)
+	/*
+		// deactivate people
+		activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
+		if err != nil {
+			return err
 		}
-	}
-	activeIDs = nil
 
-	chunkedList := []string{}
-	chunkSize := 100
-	for len(inactiveIDs) > 0 {
-		var id string
-		id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
-		chunkedList = append(chunkedList, id)
-		if len(chunkedList) >= chunkSize {
+		inactiveIDs := []string{}
+		for _, activeID := range activeIDs {
+			if !slices.Contains(newActiveIDs, activeID) {
+				inactiveIDs = append(inactiveIDs, activeID)
+			}
+		}
+		activeIDs = nil
+
+		chunkedList := []string{}
+		chunkSize := 100
+		for len(inactiveIDs) > 0 {
+			var id string
+			id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
+			chunkedList = append(chunkedList, id)
+			if len(chunkedList) >= chunkSize {
+				for _, id := range chunkedList {
+					cb(fmt.Sprintf("set person record %s to active=false", id))
+				}
+				si.repository.SetPeopleActive(ctx, false, chunkedList...)
+				chunkedList = nil
+			}
+		}
+		if len(chunkedList) > 0 {
 			for _, id := range chunkedList {
 				cb(fmt.Sprintf("set person record %s to active=false", id))
 			}
 			si.repository.SetPeopleActive(ctx, false, chunkedList...)
-			chunkedList = nil
-		}
-	}
-	if len(chunkedList) > 0 {
-		for _, id := range chunkedList {
-			cb(fmt.Sprintf("set person record %s to active=false", id))
-		}
-		si.repository.SetPeopleActive(ctx, false, chunkedList...)
-	}
+		}*/
 
 	return err
 }

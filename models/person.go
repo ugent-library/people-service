@@ -1,9 +1,13 @@
 package models
 
 import (
+	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Person struct {
@@ -95,6 +99,21 @@ func (p *Person) GetIdentifierValuesByNS(ns string) []string {
 		}
 	}
 	return vals
+}
+
+func (p *Person) EnsureBiblioID() {
+	hasBiblioId := false
+	for _, urn := range p.Identifier {
+		if urn.Namespace == "biblio_id" {
+			hasBiblioId = true
+			break
+		}
+	}
+	if !hasBiblioId {
+		biblioId := uuid.NewString()
+		fmt.Fprintf(os.Stderr, "adding new biblio_id: %s\n", biblioId)
+		p.AddIdentifier(NewURN("biblio_id", biblioId))
+	}
 }
 
 func (p *Person) SetToken(typ string, val string) {

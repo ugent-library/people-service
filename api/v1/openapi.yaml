@@ -531,9 +531,20 @@ components:
     SuggestPeopleRequest:
       type: object
       properties:
+        limit:
+          type: integer
+          minimum: 0
+          maximum: 100
         query:
           type: string
           minLength: 1
+        active:
+          type: array
+          minItems: 0
+          maxItems: 2
+          uniqueItems: true
+          items:
+            type: boolean  
       required: [query]
 
     SetPersonOrcidRequest:
@@ -613,6 +624,10 @@ components:
     SuggestOrganizationsRequest:
       type: object
       properties:
+        limit:
+          type: integer
+          minimum: 0
+          maximum: 100
         query:
           type: string
           minLength: 1
