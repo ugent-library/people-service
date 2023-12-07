@@ -87,7 +87,7 @@ CREATE UNIQUE INDEX "people_key" ON "people" ("external_id");
 
 CREATE INDEX "people_identifier_idx" ON "people" USING GIN("identifier");
 
-CREATE UNIQUE INDEX "people_email_active_key" ON "people" ("email") WHERE (active=true);
+--CREATE UNIQUE INDEX "people_email_active_key" ON "people" ("email") WHERE (active=true);
 
 -- organization_members
 
