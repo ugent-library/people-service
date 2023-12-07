@@ -1,9 +1,9 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/spf13/cobra"
@@ -20,8 +20,11 @@ var ldapSyncCmd = &cobra.Command{
 			return err
 		}
 
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+
 		importer := ldapsync.NewSynchronizer(repo, ugentLdapClient)
-		return importer.Sync(func(msg string) {
+		return importer.Sync(ctx, func(msg string) {
 			logger.Infof(msg)
 		})
 	},
@@ -31,8 +34,11 @@ var ldapTestCmd = &cobra.Command{
 	Use:   "ldaptest",
 	Short: "ldaptest",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+
 		i := 0
-		return newUgentLdapClient().SearchPeople(ldapsync.PersonQuery, func(e *ldap.Entry) error {
+		err := newUgentLdapClient().SearchPeople(ctx, ldapsync.PersonQuery, func(e *ldap.Entry) error {
 			i++
 			fmt.Fprintf(os.Stderr, "LDAP ENTRY: %d\n", i)
 			for _, attr := range e.Attributes {
@@ -40,11 +46,10 @@ var ldapTestCmd = &cobra.Command{
 					fmt.Fprintf(os.Stderr, "  %s : %s\n", attr.Name, val)
 				}
 			}
-			if i%100 == 0 {
-				time.Sleep(1 * time.Second)
-			}
 			return nil
 		})
+		fmt.Fprintf(os.Stderr, "error: %+v\n", err)
+		return err
 	},
 }
 
