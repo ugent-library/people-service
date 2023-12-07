@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 
 	"github.com/go-ldap/ldap/v3"
@@ -23,12 +24,11 @@ func NewSynchronizer(repo models.Repository, ugentLdapClient *ugentldap.Client) 
 	}
 }
 
-func (si *Synchronizer) Sync(cb func(string)) error {
-	ctx := context.TODO()
+func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 	newActiveIDs := []string{}
 
-	err := si.ugentLdapClient.SearchPeople(PersonQuery, func(ldapEntry *ldap.Entry) error {
-		newPerson, err := si.ldapEntryToPerson(ldapEntry, cb)
+	err := si.ugentLdapClient.SearchPeople(ctx, PersonQuery, func(ldapEntry *ldap.Entry) error {
+		newPerson, err := si.ldapEntryToPerson(ctx, ldapEntry, cb)
 
 		if err != nil {
 			return err
@@ -147,46 +147,46 @@ func (si *Synchronizer) Sync(cb func(string)) error {
 	}
 
 	cb(fmt.Sprintf("processed %d ldap records", len(newActiveIDs)))
-	/*
-		// deactivate people
-		activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
-		if err != nil {
-			return err
-		}
 
-		inactiveIDs := []string{}
-		for _, activeID := range activeIDs {
-			if !slices.Contains(newActiveIDs, activeID) {
-				inactiveIDs = append(inactiveIDs, activeID)
-			}
-		}
-		activeIDs = nil
+	// deactivate people
+	activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
+	if err != nil {
+		return err
+	}
 
-		chunkedList := []string{}
-		chunkSize := 100
-		for len(inactiveIDs) > 0 {
-			var id string
-			id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
-			chunkedList = append(chunkedList, id)
-			if len(chunkedList) >= chunkSize {
-				for _, id := range chunkedList {
-					cb(fmt.Sprintf("set person record %s to active=false", id))
-				}
-				si.repository.SetPeopleActive(ctx, false, chunkedList...)
-				chunkedList = nil
-			}
+	inactiveIDs := []string{}
+	for _, activeID := range activeIDs {
+		if !slices.Contains(newActiveIDs, activeID) {
+			inactiveIDs = append(inactiveIDs, activeID)
 		}
-		if len(chunkedList) > 0 {
+	}
+	activeIDs = nil
+
+	chunkedList := []string{}
+	chunkSize := 100
+	for len(inactiveIDs) > 0 {
+		var id string
+		id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
+		chunkedList = append(chunkedList, id)
+		if len(chunkedList) >= chunkSize {
 			for _, id := range chunkedList {
 				cb(fmt.Sprintf("set person record %s to active=false", id))
 			}
 			si.repository.SetPeopleActive(ctx, false, chunkedList...)
-		}*/
+			chunkedList = nil
+		}
+	}
+	if len(chunkedList) > 0 {
+		for _, id := range chunkedList {
+			cb(fmt.Sprintf("set person record %s to active=false", id))
+		}
+		si.repository.SetPeopleActive(ctx, false, chunkedList...)
+	}
 
 	return err
 }
 
-func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry, cb func(string)) (*models.Person, error) {
+func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.Entry, cb func(string)) (*models.Person, error) {
 	newPerson := models.NewPerson()
 	newPerson.Active = true
 
@@ -236,7 +236,7 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry, cb func(string)
 	}
 
 	for _, orgId := range orgIds {
-		orgs, err := si.repository.GetOrganizationsByIdentifier(context.TODO(), models.NewURN("biblio_id", orgId))
+		orgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("biblio_id", orgId))
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +244,7 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry, cb func(string)
 		var org *models.Organization
 		if len(orgs) == 0 {
 			cb(fmt.Sprintf("adding dummy organization %s for person with name '%s'", orgId, newPerson.Name))
-			o, err := si.addDummyOrg(orgId)
+			o, err := si.addDummyOrg(ctx, orgId)
 			if err != nil {
 				return nil, err
 			}
@@ -259,9 +259,9 @@ func (si *Synchronizer) ldapEntryToPerson(ldapEntry *ldap.Entry, cb func(string)
 	return newPerson, nil
 }
 
-func (si *Synchronizer) addDummyOrg(orgId string) (*models.Organization, error) {
+func (si *Synchronizer) addDummyOrg(ctx context.Context, orgId string) (*models.Organization, error) {
 	org := models.NewOrganization()
 	org.NameEng = orgId
 	org.AddIdentifier(models.NewURN("biblio_id", orgId))
-	return si.repository.CreateOrganization(context.TODO(), org)
+	return si.repository.CreateOrganization(ctx, org)
 }
