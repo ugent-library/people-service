@@ -72,6 +72,27 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
+  "/get-people-by-id":
+    post:
+      summary: "Retrieve person records by their ids"
+      description: "Retrieve person records by their ids"
+      operationId: "GetPeopleById"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetPeopleByIdRequest"
+        required: true
+      responses:
+        "200":
+          description: "Retrieve single person record successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+
 
   "/get-people":
     post:
@@ -251,6 +272,27 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/GetOrganizationsByIdentifierRequest"
+        required: true
+      responses:
+        "200":
+          description: "Retrieve a organization records successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+
+  "/get-organizations-by-id":
+    post:
+      summary: "Get organization records by their ids"
+      description: "Get organization records by their ids"
+      operationId: "GetOrganizationsById"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetOrganizationsByIdRequest"
         required: true
       responses:
         "200":
@@ -522,6 +564,16 @@ components:
             pattern: "^urn:(orcid|gismo_id|ugent_id|historic_ugent_id|ugent_barcode|ugent_username|ugent_memorialis_id|biblio_id):.+"
       required: [identifier]
 
+    GetPeopleByIdRequest:
+      type: object
+      properties:
+        id:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required: [id]
+
     GetPeopleRequest:
       type: object
       properties:
@@ -614,6 +666,16 @@ components:
             minLength: 1
             pattern: "^urn:(gismo_id|ugent_id|biblio_id|ugent_memorialis_id):.+"
       required: [identifier]
+
+    GetOrganizationsByIdRequest:
+      type: object
+      properties:
+        id:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required: [id]
 
     GetOrganizationsRequest:
       type: object

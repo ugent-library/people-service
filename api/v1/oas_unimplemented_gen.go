@@ -49,6 +49,15 @@ func (UnimplementedHandler) GetOrganizations(ctx context.Context, req *GetOrgani
 	return r, ht.ErrNotImplemented
 }
 
+// GetOrganizationsById implements GetOrganizationsById operation.
+//
+// Get organization records by their ids.
+//
+// POST /get-organizations-by-id
+func (UnimplementedHandler) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (r *OrganizationListResponse, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetOrganizationsByIdentifier implements GetOrganizationsByIdentifier operation.
 //
 // Get organization records by one of the extra identifiers.
@@ -64,6 +73,15 @@ func (UnimplementedHandler) GetOrganizationsByIdentifier(ctx context.Context, re
 //
 // POST /get-people
 func (UnimplementedHandler) GetPeople(ctx context.Context, req *GetPeopleRequest) (r *PersonPagedListResponse, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetPeopleById implements GetPeopleById operation.
+//
+// Retrieve person records by their ids.
+//
+// POST /get-people-by-id
+func (UnimplementedHandler) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (r *PersonListResponse, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

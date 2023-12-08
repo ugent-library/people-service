@@ -26,6 +26,20 @@ func (s *Service) GetPerson(ctx context.Context, req *GetPersonRequest) (*Person
 	return mapToExternalPerson(person), nil
 }
 
+func (s *Service) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error) {
+	people, err := s.repository.GetPeopleById(ctx, req.ID...)
+	if err != nil {
+		return nil, err
+	}
+	res := &PersonListResponse{
+		Data: make([]Person, 0, len(people)),
+	}
+	for _, person := range people {
+		res.Data = append(res.Data, *mapToExternalPerson(person))
+	}
+	return res, nil
+}
+
 func (s *Service) GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (*PersonListResponse, error) {
 	urns := make([]*models.URN, 0, len(req.Identifier))
 	for _, id := range req.Identifier {
@@ -161,6 +175,20 @@ func (s *Service) GetOrganizationsByIdentifier(ctx context.Context, req *GetOrga
 		urns = append(urns, urn)
 	}
 	orgs, err := s.repository.GetOrganizationsByIdentifier(ctx, urns...)
+	if err != nil {
+		return nil, err
+	}
+	res := &OrganizationListResponse{
+		Data: make([]Organization, 0, len(orgs)),
+	}
+	for _, org := range orgs {
+		res.Data = append(res.Data, *mapToExternalOrganization(org))
+	}
+	return res, nil
+}
+
+func (s *Service) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
+	orgs, err := s.repository.GetOrganizationsById(ctx, req.ID...)
 	if err != nil {
 		return nil, err
 	}

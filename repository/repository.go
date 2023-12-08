@@ -723,6 +723,61 @@ func (repo *repository) SuggestOrganizations(ctx context.Context, params models.
 	return orgs, nil
 }
 
+func (repo *repository) GetOrganizationsById(ctx context.Context, ids ...string) ([]*models.Organization, error) {
+	query := `SELECT 
+	"id",
+	"external_id",
+	"date_created",
+	"date_updated",
+	"type",
+	"name_dut",
+	"name_eng", 
+	"acronym",
+	"identifier"
+FROM "organizations" WHERE "external_id" = any($1)`
+
+	rows, err := repo.client.Query(ctx, query, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orgRecs := []*organization{}
+	for rows.Next() {
+		orgRec := &organization{}
+		err = rows.Scan(
+			&orgRec.id,
+			&orgRec.externalID,
+			&orgRec.dateCreated,
+			&orgRec.dateUpdated,
+			&orgRec.Type,
+			&orgRec.nameDut,
+			&orgRec.nameEng,
+			&orgRec.acronym,
+			&orgRec.identifier,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orgRecs = append(orgRecs, orgRec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(orgRecs) == 0 {
+		return nil, nil
+	}
+
+	orgs, err := repo.unpackOrganizations(ctx, orgRecs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return orgs, nil
+}
+
 func (repo *repository) GetOrganizations(ctx context.Context) ([]*models.Organization, string, error) {
 	organizations, newCursor, err := repo.getOrganizations(ctx, setCursor{})
 	if err != nil {
@@ -1279,6 +1334,80 @@ func (repo *repository) GetPeopleByIdentifier(ctx context.Context, urns ...*mode
 	for _, urn := range urns {
 		ids = append(ids, urn.String())
 	}
+	rows, err := repo.client.Query(ctx, query, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	personRecs := []*person{}
+
+	for rows.Next() {
+		p := &person{}
+		err = rows.Scan(
+			&p.id,
+			&p.dateCreated,
+			&p.dateUpdated,
+			&p.externalID,
+			&p.active,
+			&p.birthDate,
+			&p.email,
+			&p.givenName,
+			&p.name,
+			&p.familyName,
+			&p.jobCategory,
+			&p.preferredGivenName,
+			&p.preferredFamilyName,
+			&p.honorificPrefix,
+			&p.role,
+			&p.settings,
+			&p.objectClass,
+			&p.token,
+			&p.identifier,
+		)
+		if err != nil {
+			return nil, err
+		}
+		personRecs = append(personRecs, p)
+	}
+
+	if len(personRecs) == 0 {
+		return nil, nil
+	}
+
+	people, err := repo.unpackPeople(ctx, personRecs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return people, nil
+}
+
+func (repo *repository) GetPeopleById(ctx context.Context, ids ...string) ([]*models.Person, error) {
+	query := `
+	SELECT
+		"id",
+		"date_created",
+		"date_updated",
+		"external_id",
+		"active",
+		"birth_date",
+		"email",
+		"given_name",
+		"name",
+		"family_name",
+		"job_category",
+		"preferred_given_name",
+		"preferred_family_name",
+		"honorific_prefix", 
+		"role",
+		"settings", 
+		"object_class",
+		"token",
+		"identifier"
+	FROM "people" WHERE "external_id" = any($1)
+	`
+
 	rows, err := repo.client.Query(ctx, query, ids)
 	if err != nil {
 		return nil, err

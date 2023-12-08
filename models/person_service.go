@@ -10,6 +10,7 @@ type PersonService interface {
 	UpdatePerson(context.Context, *Person) (*Person, error)
 	GetPerson(context.Context, string) (*Person, error)
 	GetPeopleByIdentifier(context.Context, ...*URN) ([]*Person, error)
+	GetPeopleById(context.Context, ...string) ([]*Person, error)
 	DeletePerson(context.Context, string) error
 	EachPerson(context.Context, func(*Person) bool) error
 	SetPersonToken(context.Context, string, string, string) error

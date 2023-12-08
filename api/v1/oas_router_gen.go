@@ -154,23 +154,42 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							return
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-by-identifier"
-							if l := len("-by-identifier"); len(elem) >= l && elem[0:l] == "-by-identifier" {
+						case '-': // Prefix: "-by-id"
+							if l := len("-by-id"); len(elem) >= l && elem[0:l] == "-by-id" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
 								switch r.Method {
 								case "POST":
-									s.handleGetOrganizationsByIdentifierRequest([0]string{}, elemIsEscaped, w, r)
+									s.handleGetOrganizationsByIdRequest([0]string{}, elemIsEscaped, w, r)
 								default:
 									s.notAllowed(w, r, "POST")
 								}
 
 								return
+							}
+							switch elem[0] {
+							case 'e': // Prefix: "entifier"
+								if l := len("entifier"); len(elem) >= l && elem[0:l] == "entifier" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleGetOrganizationsByIdentifierRequest([0]string{}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
 							}
 						}
 					}
@@ -203,23 +222,42 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							return
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-by-identifier"
-							if l := len("-by-identifier"); len(elem) >= l && elem[0:l] == "-by-identifier" {
+						case '-': // Prefix: "-by-id"
+							if l := len("-by-id"); len(elem) >= l && elem[0:l] == "-by-id" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
 								switch r.Method {
 								case "POST":
-									s.handleGetPeopleByIdentifierRequest([0]string{}, elemIsEscaped, w, r)
+									s.handleGetPeopleByIdRequest([0]string{}, elemIsEscaped, w, r)
 								default:
 									s.notAllowed(w, r, "POST")
 								}
 
 								return
+							}
+							switch elem[0] {
+							case 'e': // Prefix: "entifier"
+								if l := len("entifier"); len(elem) >= l && elem[0:l] == "entifier" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleGetPeopleByIdentifierRequest([0]string{}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
 							}
 						}
 					case 'r': // Prefix: "rson"
@@ -589,8 +627,8 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							}
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-by-identifier"
-							if l := len("-by-identifier"); len(elem) >= l && elem[0:l] == "-by-identifier" {
+						case '-': // Prefix: "-by-id"
+							if l := len("-by-id"); len(elem) >= l && elem[0:l] == "-by-id" {
 								elem = elem[l:]
 							} else {
 								break
@@ -599,16 +637,39 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							if len(elem) == 0 {
 								switch method {
 								case "POST":
-									// Leaf: GetOrganizationsByIdentifier
-									r.name = "GetOrganizationsByIdentifier"
-									r.summary = "Get organization records by one of the extra identifiers"
-									r.operationID = "GetOrganizationsByIdentifier"
-									r.pathPattern = "/get-organizations-by-identifier"
+									r.name = "GetOrganizationsById"
+									r.summary = "Get organization records by their ids"
+									r.operationID = "GetOrganizationsById"
+									r.pathPattern = "/get-organizations-by-id"
 									r.args = args
 									r.count = 0
 									return r, true
 								default:
 									return
+								}
+							}
+							switch elem[0] {
+							case 'e': // Prefix: "entifier"
+								if l := len("entifier"); len(elem) >= l && elem[0:l] == "entifier" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									switch method {
+									case "POST":
+										// Leaf: GetOrganizationsByIdentifier
+										r.name = "GetOrganizationsByIdentifier"
+										r.summary = "Get organization records by one of the extra identifiers"
+										r.operationID = "GetOrganizationsByIdentifier"
+										r.pathPattern = "/get-organizations-by-identifier"
+										r.args = args
+										r.count = 0
+										return r, true
+									default:
+										return
+									}
 								}
 							}
 						}
@@ -646,8 +707,8 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							}
 						}
 						switch elem[0] {
-						case '-': // Prefix: "-by-identifier"
-							if l := len("-by-identifier"); len(elem) >= l && elem[0:l] == "-by-identifier" {
+						case '-': // Prefix: "-by-id"
+							if l := len("-by-id"); len(elem) >= l && elem[0:l] == "-by-id" {
 								elem = elem[l:]
 							} else {
 								break
@@ -656,16 +717,39 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							if len(elem) == 0 {
 								switch method {
 								case "POST":
-									// Leaf: GetPeopleByIdentifier
-									r.name = "GetPeopleByIdentifier"
-									r.summary = "Retrieve person records by one of the extra identifiers"
-									r.operationID = "GetPeopleByIdentifier"
-									r.pathPattern = "/get-people-by-identifier"
+									r.name = "GetPeopleById"
+									r.summary = "Retrieve person records by their ids"
+									r.operationID = "GetPeopleById"
+									r.pathPattern = "/get-people-by-id"
 									r.args = args
 									r.count = 0
 									return r, true
 								default:
 									return
+								}
+							}
+							switch elem[0] {
+							case 'e': // Prefix: "entifier"
+								if l := len("entifier"); len(elem) >= l && elem[0:l] == "entifier" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									switch method {
+									case "POST":
+										// Leaf: GetPeopleByIdentifier
+										r.name = "GetPeopleByIdentifier"
+										r.summary = "Retrieve person records by one of the extra identifiers"
+										r.operationID = "GetPeopleByIdentifier"
+										r.pathPattern = "/get-people-by-identifier"
+										r.args = args
+										r.count = 0
+										return r, true
+									default:
+										return
+									}
 								}
 							}
 						}

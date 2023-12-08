@@ -92,6 +92,21 @@ func (s *GetOrganizationRequest) SetID(val string) {
 	s.ID = val
 }
 
+// Ref: #/components/schemas/GetOrganizationsByIdRequest
+type GetOrganizationsByIdRequest struct {
+	ID []string `json:"id"`
+}
+
+// GetID returns the value of ID.
+func (s *GetOrganizationsByIdRequest) GetID() []string {
+	return s.ID
+}
+
+// SetID sets the value of ID.
+func (s *GetOrganizationsByIdRequest) SetID(val []string) {
+	s.ID = val
+}
+
 // Ref: #/components/schemas/GetOrganizationsByIdentifierRequest
 type GetOrganizationsByIdentifierRequest struct {
 	Identifier []string `json:"identifier"`
@@ -120,6 +135,21 @@ func (s *GetOrganizationsRequest) GetCursor() OptString {
 // SetCursor sets the value of Cursor.
 func (s *GetOrganizationsRequest) SetCursor(val OptString) {
 	s.Cursor = val
+}
+
+// Ref: #/components/schemas/GetPeopleByIdRequest
+type GetPeopleByIdRequest struct {
+	ID []string `json:"id"`
+}
+
+// GetID returns the value of ID.
+func (s *GetPeopleByIdRequest) GetID() []string {
+	return s.ID
+}
+
+// SetID sets the value of ID.
+func (s *GetPeopleByIdRequest) SetID(val []string) {
+	s.ID = val
 }
 
 // Ref: #/components/schemas/GetPeopleByIdentifierRequest

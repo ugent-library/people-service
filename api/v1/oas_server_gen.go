@@ -32,6 +32,12 @@ type Handler interface {
 	//
 	// POST /get-organizations
 	GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationPagedListResponse, error)
+	// GetOrganizationsById implements GetOrganizationsById operation.
+	//
+	// Get organization records by their ids.
+	//
+	// POST /get-organizations-by-id
+	GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error)
 	// GetOrganizationsByIdentifier implements GetOrganizationsByIdentifier operation.
 	//
 	// Get organization records by one of the extra identifiers.
@@ -44,6 +50,12 @@ type Handler interface {
 	//
 	// POST /get-people
 	GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonPagedListResponse, error)
+	// GetPeopleById implements GetPeopleById operation.
+	//
+	// Retrieve person records by their ids.
+	//
+	// POST /get-people-by-id
+	GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error)
 	// GetPeopleByIdentifier implements GetPeopleByIdentifier operation.
 	//
 	// Retrieve person records by one of the extra identifiers.

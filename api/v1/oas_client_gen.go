@@ -47,6 +47,12 @@ type Invoker interface {
 	//
 	// POST /get-organizations
 	GetOrganizations(ctx context.Context, request *GetOrganizationsRequest) (*OrganizationPagedListResponse, error)
+	// GetOrganizationsById invokes GetOrganizationsById operation.
+	//
+	// Get organization records by their ids.
+	//
+	// POST /get-organizations-by-id
+	GetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (*OrganizationListResponse, error)
 	// GetOrganizationsByIdentifier invokes GetOrganizationsByIdentifier operation.
 	//
 	// Get organization records by one of the extra identifiers.
@@ -59,6 +65,12 @@ type Invoker interface {
 	//
 	// POST /get-people
 	GetPeople(ctx context.Context, request *GetPeopleRequest) (*PersonPagedListResponse, error)
+	// GetPeopleById invokes GetPeopleById operation.
+	//
+	// Retrieve person records by their ids.
+	//
+	// POST /get-people-by-id
+	GetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (*PersonListResponse, error)
 	// GetPeopleByIdentifier invokes GetPeopleByIdentifier operation.
 	//
 	// Retrieve person records by one of the extra identifiers.
@@ -595,6 +607,114 @@ func (c *Client) sendGetOrganizations(ctx context.Context, request *GetOrganizat
 	return result, nil
 }
 
+// GetOrganizationsById invokes GetOrganizationsById operation.
+//
+// Get organization records by their ids.
+//
+// POST /get-organizations-by-id
+func (c *Client) GetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
+	res, err := c.sendGetOrganizationsById(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendGetOrganizationsById(ctx context.Context, request *GetOrganizationsByIdRequest) (res *OrganizationListResponse, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("GetOrganizationsById"),
+		semconv.HTTPMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/get-organizations-by-id"),
+	}
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, "GetOrganizationsById",
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/get-organizations-by-id"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeGetOrganizationsByIdRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:ApiKey"
+			switch err := c.securityApiKey(ctx, "GetOrganizationsById", r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKey\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetOrganizationsByIdResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetOrganizationsByIdentifier invokes GetOrganizationsByIdentifier operation.
 //
 // Get organization records by one of the extra identifiers.
@@ -804,6 +924,114 @@ func (c *Client) sendGetPeople(ctx context.Context, request *GetPeopleRequest) (
 
 	stage = "DecodeResponse"
 	result, err := decodeGetPeopleResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetPeopleById invokes GetPeopleById operation.
+//
+// Retrieve person records by their ids.
+//
+// POST /get-people-by-id
+func (c *Client) GetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (*PersonListResponse, error) {
+	res, err := c.sendGetPeopleById(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendGetPeopleById(ctx context.Context, request *GetPeopleByIdRequest) (res *PersonListResponse, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("GetPeopleById"),
+		semconv.HTTPMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/get-people-by-id"),
+	}
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(float64(elapsedDuration)/float64(time.Millisecond)), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, "GetPeopleById",
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/get-people-by-id"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeGetPeopleByIdRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:ApiKey"
+			switch err := c.securityApiKey(ctx, "GetPeopleById", r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKey\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetPeopleByIdResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
