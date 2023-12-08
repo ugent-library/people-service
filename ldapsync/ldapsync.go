@@ -256,6 +256,59 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 		newPerson.AddOrganizationMember(newOrgMember)
 	}
 
+	if slices.Contains(newPerson.ObjectClass, "ugentFormerEmployee") {
+		orgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("biblio_id", "UGent"))
+		if err != nil {
+			return nil, err
+		}
+		var org *models.Organization
+		if len(orgs) == 0 {
+			o, err := si.addDummyOrg(ctx, "UGent")
+			if err != nil {
+				return nil, err
+			}
+			org = o
+		} else {
+			org = orgs[0]
+		}
+		hasOrg := false
+		for _, orgMember := range newPerson.Organization {
+			if orgMember.ID == org.ID {
+				hasOrg = true
+				break
+			}
+		}
+		if !hasOrg {
+			newPerson.AddOrganizationMember(models.NewOrganizationMember(org.ID))
+		}
+	}
+	if slices.Contains(newPerson.ObjectClass, "uzEmployee") {
+		orgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("biblio_id", "UZGent"))
+		if err != nil {
+			return nil, err
+		}
+		var org *models.Organization
+		if len(orgs) == 0 {
+			o, err := si.addDummyOrg(ctx, "UZGent")
+			if err != nil {
+				return nil, err
+			}
+			org = o
+		} else {
+			org = orgs[0]
+		}
+		hasOrg := false
+		for _, orgMember := range newPerson.Organization {
+			if orgMember.ID == org.ID {
+				hasOrg = true
+				break
+			}
+		}
+		if !hasOrg {
+			newPerson.AddOrganizationMember(models.NewOrganizationMember(org.ID))
+		}
+	}
+
 	return newPerson, nil
 }
 
