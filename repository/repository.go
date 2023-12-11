@@ -989,10 +989,12 @@ INSERT INTO "people"
 		}
 		eTokenMap[typ] = eVal
 	}
+	tsVals := []string{p.Name}
+	tsVals = vacuum(append(tsVals, p.GetIdentifierValues()...))
 	queryArgs = append(queryArgs,
 		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
-		pgjson(vacuum([]string{p.Name})),
+		pgjson(tsVals),
 	)
 
 	err = tx.QueryRow(ctx, query, queryArgs...).Scan(&rowID)
@@ -1157,10 +1159,12 @@ RETURNING "id"
 		}
 		eTokenMap[typ] = eVal
 	}
+	tsVals := []string{p.Name}
+	tsVals = vacuum(append(tsVals, p.GetIdentifierValues()...))
 	queryArgs = append(queryArgs,
 		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
-		pgjson(vacuum([]string{p.Name})),
+		pgjson(tsVals),
 		p.ID,
 	)
 
