@@ -4,6 +4,7 @@ import "context"
 
 type PersonSuggestService interface {
 	SuggestPeople(context.Context, PersonSuggestParams) ([]*Person, error)
+	RebuildAutocompletePeople(context.Context) error
 }
 
 type PersonSuggestParams struct {

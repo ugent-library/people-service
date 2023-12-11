@@ -4,6 +4,7 @@ import "context"
 
 type OrganizationSuggestService interface {
 	SuggestOrganizations(context.Context, OrganizationSuggestParams) ([]*Organization, error)
+	RebuildAutocompleteOrganizations(context.Context) error
 }
 
 type OrganizationSuggestParams struct {

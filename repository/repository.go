@@ -362,6 +362,12 @@ func (repo *repository) SaveOrganization(ctx context.Context, org *models.Organi
 	return repo.CreateOrganization(ctx, org)
 }
 
+func (repo *repository) getTsValsForOrganization(org *models.Organization) []string {
+	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
+	tsVals = vacuum(append(tsVals, org.GetIdentifierValues()...))
+	return tsVals
+}
+
 func (repo *repository) CreateOrganization(ctx context.Context, org *models.Organization) (*models.Organization, error) {
 	now := time.Now().UTC()
 	org.DateCreated = &now
@@ -395,8 +401,6 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING "id"
 	`
-	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
-	tsVals = vacuum(append(tsVals, org.GetIdentifierValues()...))
 	var rowID int
 	err = tx.QueryRow(
 		ctx, query,
@@ -408,7 +412,7 @@ func (repo *repository) CreateOrganization(ctx context.Context, org *models.Orga
 		org.Type,
 		pgtext(org.Acronym),
 		pgjson(org.GetIdentifierQualifiedValues()),
-		pgjson(tsVals),
+		pgjson(repo.getTsValsForOrganization(org)),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
@@ -498,9 +502,6 @@ func (repo *repository) UpdateOrganization(ctx context.Context, org *models.Orga
 	defer tx.Rollback(ctx)
 
 	// update organization
-	tsVals := []string{org.NameDut, org.NameEng, org.Acronym}
-	tsVals = vacuum(append(tsVals, org.GetIdentifierValues()...))
-
 	query := `
 UPDATE "organizations"
 SET
@@ -525,7 +526,7 @@ RETURNING "id"
 		org.Type,
 		pgtext(org.Acronym),
 		pgjson(org.GetIdentifierQualifiedValues()),
-		pgjson(tsVals),
+		pgjson(repo.getTsValsForOrganization(org)),
 	).Scan(&rowID)
 	if err != nil {
 		return nil, err
@@ -896,6 +897,12 @@ func (repo *repository) SavePerson(ctx context.Context, p *models.Person) (*mode
 	return repo.CreatePerson(ctx, p)
 }
 
+func (repo *repository) getTsValsForPerson(p *models.Person) []string {
+	tsVals := []string{p.Name}
+	tsVals = vacuum(append(tsVals, p.GetIdentifierValues()...))
+	return tsVals
+}
+
 func (repo *repository) CreatePerson(ctx context.Context, p *models.Person) (*models.Person, error) {
 	now := time.Now().UTC()
 	p.DateCreated = &now
@@ -989,12 +996,10 @@ INSERT INTO "people"
 		}
 		eTokenMap[typ] = eVal
 	}
-	tsVals := []string{p.Name}
-	tsVals = vacuum(append(tsVals, p.GetIdentifierValues()...))
 	queryArgs = append(queryArgs,
 		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
-		pgjson(tsVals),
+		pgjson(repo.getTsValsForPerson(p)),
 	)
 
 	err = tx.QueryRow(ctx, query, queryArgs...).Scan(&rowID)
@@ -1159,12 +1164,10 @@ RETURNING "id"
 		}
 		eTokenMap[typ] = eVal
 	}
-	tsVals := []string{p.Name}
-	tsVals = vacuum(append(tsVals, p.GetIdentifierValues()...))
 	queryArgs = append(queryArgs,
 		pgjson(eTokenMap),
 		pgjson(p.GetIdentifierQualifiedValues()),
-		pgjson(tsVals),
+		pgjson(repo.getTsValsForPerson(p)),
 		p.ID,
 	)
 
@@ -1868,6 +1871,102 @@ func (repo *repository) SetPeopleActive(ctx context.Context, active bool, extern
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (repo *repository) RebuildAutocompletePeople(ctx context.Context) error {
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := repo.client.Query(ctx, `SELECT "id", "name", "identifier" FROM "people"`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		pRec := &person{}
+		if err = rows.Scan(&pRec.id, &pRec.name, &pRec.identifier); err != nil {
+			return err
+		}
+		p := &models.Person{Name: pRec.name.String}
+		if vals, err := fromPgTextArray(pRec.identifier); err != nil {
+			return err
+		} else {
+			for _, val := range vals {
+				urn, err := models.ParseURN(val)
+				if err != nil {
+					return err
+				}
+				p.AddIdentifier(urn)
+			}
+		}
+		_, err = tx.Exec(ctx, `UPDATE "people" SET "ts_vals" = $1 WHERE "id" = $2`, pgjson(repo.getTsValsForPerson(p)), pRec.id)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *repository) RebuildAutocompleteOrganizations(ctx context.Context) error {
+	tx, err := repo.client.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := repo.client.Query(ctx, `SELECT "id", "name_dut", "name_eng", "acronym", "identifier" FROM "organizations"`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		oRec := &organization{}
+		if err = rows.Scan(&oRec.id, &oRec.nameDut, &oRec.nameEng, &oRec.acronym, &oRec.identifier); err != nil {
+			return err
+		}
+		org := &models.Organization{
+			NameDut: oRec.nameDut.String,
+			NameEng: oRec.nameEng.String,
+			Acronym: oRec.acronym.String,
+		}
+		if vals, err := fromPgTextArray(oRec.identifier); err != nil {
+			return err
+		} else {
+			for _, val := range vals {
+				urn, err := models.ParseURN(val)
+				if err != nil {
+					return err
+				}
+				org.AddIdentifier(urn)
+			}
+		}
+		_, err = tx.Exec(ctx, `UPDATE "organizations" SET "ts_vals" = $1 WHERE "id" = $2`, pgjson(repo.getTsValsForOrganization(org)), oRec.id)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
