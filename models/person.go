@@ -188,7 +188,7 @@ func (p *Person) Dup() *Person {
 		newP.Token[typ] = val
 	}
 	for _, id := range p.Identifier {
-		newP.AddIdentifier(NewURN(id.Namespace, id.Value))
+		newP.AddIdentifier(id.Dup())
 	}
 	for _, orgMember := range p.Organization {
 		newP.Organization = append(newP.Organization, orgMember.Dup())
