@@ -2,7 +2,6 @@ package ldapsync
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"slices"
 	"sort"
@@ -10,25 +9,28 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/ugent-library/people-service/models"
 	"github.com/ugent-library/people-service/ugentldap"
+	"go.uber.org/zap"
 )
 
 type Synchronizer struct {
 	repository      models.Repository
 	ugentLdapClient *ugentldap.Client
+	logger          *zap.SugaredLogger
 }
 
-func NewSynchronizer(repo models.Repository, ugentLdapClient *ugentldap.Client) *Synchronizer {
+func NewSynchronizer(repo models.Repository, ugentLdapClient *ugentldap.Client, l *zap.SugaredLogger) *Synchronizer {
 	return &Synchronizer{
 		repository:      repo,
 		ugentLdapClient: ugentLdapClient,
+		logger:          l,
 	}
 }
 
-func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
+func (si *Synchronizer) Sync(ctx context.Context) error {
 	newActiveIDs := []string{}
 
 	err := si.ugentLdapClient.SearchPeople(ctx, PersonQuery, func(ldapEntry *ldap.Entry) error {
-		newPerson, err := si.ldapEntryToPerson(ctx, ldapEntry, cb)
+		newPerson, err := si.ldapEntryToPerson(ctx, ldapEntry)
 
 		if err != nil {
 			return err
@@ -52,7 +54,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 			if err != nil {
 				return err
 			}
-			cb(fmt.Sprintf("person record %s: created", newPerson.ID))
+			si.logger.Infof("person record %s: created", newPerson.ID)
 			newActiveIDs = append(newActiveIDs, newPerson.ID)
 		} else {
 			// delete older versions with same historic_ugent_id
@@ -62,7 +64,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 					if err != nil {
 						return err
 					}
-					cb(fmt.Sprintf("person record %s: deleted", person.ID))
+					si.logger.Infof("person record %s: deleted", person.ID)
 				}
 			}
 
@@ -128,7 +130,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 			}
 
 			if reflect.DeepEqual(oldPerson, oldStoredPerson) {
-				cb(fmt.Sprintf("person record %s: no update", oldPerson.ID))
+				si.logger.Infof("person record %s: no update", oldPerson.ID)
 				return nil
 			}
 
@@ -136,7 +138,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 			if err != nil {
 				return err
 			}
-			cb(fmt.Sprintf("person record %s: updated", oldPerson.ID))
+			si.logger.Infof("person record %s: updated", oldPerson.ID)
 		}
 
 		return nil
@@ -146,7 +148,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 		return err
 	}
 
-	cb(fmt.Sprintf("processed %d ldap records", len(newActiveIDs)))
+	si.logger.Infof("processed %d ldap records", len(newActiveIDs))
 
 	// deactivate people
 	activeIDs, err := si.repository.GetPersonIDActive(ctx, true)
@@ -170,7 +172,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 		chunkedList = append(chunkedList, id)
 		if len(chunkedList) >= chunkSize {
 			for _, id := range chunkedList {
-				cb(fmt.Sprintf("set person record %s to active=false", id))
+				si.logger.Infof("set person record %s to active=false", id)
 			}
 			si.repository.SetPeopleActive(ctx, false, chunkedList...)
 			chunkedList = nil
@@ -178,7 +180,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 	}
 	if len(chunkedList) > 0 {
 		for _, id := range chunkedList {
-			cb(fmt.Sprintf("set person record %s to active=false", id))
+			si.logger.Infof("set person record %s to active=false", id)
 		}
 		si.repository.SetPeopleActive(ctx, false, chunkedList...)
 	}
@@ -186,7 +188,7 @@ func (si *Synchronizer) Sync(ctx context.Context, cb func(string)) error {
 	return err
 }
 
-func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.Entry, cb func(string)) (*models.Person, error) {
+func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.Entry) (*models.Person, error) {
 	newPerson := models.NewPerson()
 	newPerson.Active = true
 
@@ -243,7 +245,7 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 
 		var org *models.Organization
 		if len(orgs) == 0 {
-			cb(fmt.Sprintf("adding dummy organization %s for person with name '%s'", orgId, newPerson.Name))
+			si.logger.Infof("adding dummy organization %s for person with name '%s'", orgId, newPerson.Name)
 			o, err := si.addDummyOrg(ctx, orgId)
 			if err != nil {
 				return nil, err

@@ -23,10 +23,8 @@ var ldapSyncCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 
-		importer := ldapsync.NewSynchronizer(repo, ugentLdapClient)
-		return importer.Sync(ctx, func(msg string) {
-			logger.Infof(msg)
-		})
+		importer := ldapsync.NewSynchronizer(repo, ugentLdapClient, logger)
+		return importer.Sync(ctx)
 	},
 }
 
