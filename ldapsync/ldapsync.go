@@ -156,33 +156,14 @@ func (si *Synchronizer) Sync(ctx context.Context) error {
 		return err
 	}
 
-	inactiveIDs := []string{}
 	for _, activeID := range activeIDs {
 		if !slices.Contains(newActiveIDs, activeID) {
-			inactiveIDs = append(inactiveIDs, activeID)
-		}
-	}
-	activeIDs = nil
-
-	chunkedList := []string{}
-	chunkSize := 100
-	for len(inactiveIDs) > 0 {
-		var id string
-		id, inactiveIDs = inactiveIDs[0], inactiveIDs[1:]
-		chunkedList = append(chunkedList, id)
-		if len(chunkedList) >= chunkSize {
-			for _, id := range chunkedList {
-				si.logger.Infof("set person record %s to active=false", id)
+			err := si.repository.SetPersonActive(ctx, activeID, false)
+			if err != nil {
+				si.logger.Errorf("failed to set person record %s to active=false: %s", activeID, err)
 			}
-			si.repository.SetPeopleActive(ctx, false, chunkedList...)
-			chunkedList = nil
+			si.logger.Infof("set person record %s to active=false", activeID)
 		}
-	}
-	if len(chunkedList) > 0 {
-		for _, id := range chunkedList {
-			si.logger.Infof("set person record %s to active=false", id)
-		}
-		si.repository.SetPeopleActive(ctx, false, chunkedList...)
 	}
 
 	return err

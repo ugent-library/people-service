@@ -1864,6 +1864,19 @@ func (repo *repository) GetPersonIDActive(ctx context.Context, active bool) ([]s
 	return externalIDs, nil
 }
 
+func (repo *repository) SetPersonActive(ctx context.Context, externalID string, active bool) error {
+	_, err := repo.client.Exec(
+		ctx,
+		`UPDATE "people" SET date_updated = now(), active = $1 WHERE "external_id" = $2`,
+		active,
+		externalID,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (repo *repository) SetPeopleActive(ctx context.Context, active bool, externalIDs ...string) error {
 	_, err := repo.client.Exec(
 		ctx,
