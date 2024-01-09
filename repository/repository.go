@@ -308,10 +308,12 @@ func (repo *repository) unpackOrganizations(ctx context.Context, orgRecs ...*org
 	rowIDs := make([]int, 0, len(orgRecs))
 	for _, orgRec := range orgRecs {
 		rowIDs = append(rowIDs, orgRec.id)
+		dateCreated := orgRec.dateCreated.Time
+		dateUpdated := orgRec.dateUpdated.Time
 		org := &models.Organization{
 			ID:          orgRec.externalID.String,
-			DateCreated: &orgRec.dateCreated.Time,
-			DateUpdated: &orgRec.dateUpdated.Time,
+			DateCreated: &dateCreated,
+			DateUpdated: &dateUpdated,
 			Type:        orgRec.Type.String,
 			NameDut:     orgRec.nameDut.String,
 			NameEng:     orgRec.nameEng.String,
@@ -1474,12 +1476,13 @@ func (repo *repository) unpackPeople(ctx context.Context, personRecs ...*person)
 	rowIDs := make([]int, 0, len(personRecs))
 	for _, personRec := range personRecs {
 		rowIDs = append(rowIDs, personRec.id)
-
+		dateCreated := personRec.dateCreated.Time
+		dateUpdated := personRec.dateUpdated.Time
 		person := &models.Person{
 			ID:                  personRec.externalID.String,
 			Active:              personRec.active.Bool,
-			DateCreated:         &personRec.dateCreated.Time,
-			DateUpdated:         &personRec.dateUpdated.Time,
+			DateCreated:         &dateCreated,
+			DateUpdated:         &dateUpdated,
 			Name:                personRec.name.String,
 			GivenName:           personRec.givenName.String,
 			FamilyName:          personRec.familyName.String,

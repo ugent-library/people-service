@@ -326,12 +326,14 @@ func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organi
 	org.NameEng = o.NameEng.Value
 	parents := []*models.OrganizationParent{}
 	for _, parent := range o.Parent {
+		from := parent.From
 		op := models.OrganizationParent{
 			ID:   parent.ID,
-			From: &parent.From,
+			From: &from,
 		}
 		if parent.Until.Set {
-			op.Until = &parent.Until.Value
+			until := parent.Until.Value
+			op.Until = &until
 		}
 		parents = append(parents, &op)
 	}
