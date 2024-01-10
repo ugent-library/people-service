@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +12,6 @@ var rebuildAutocompleteOrganizationsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		repo, err := newRepository()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "got error when building repo: %s\n", err)
 			return err
 		}
 

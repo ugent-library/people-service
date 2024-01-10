@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -110,9 +108,7 @@ func (p *Person) EnsureBiblioID() {
 		}
 	}
 	if !hasBiblioId {
-		biblioId := uuid.NewString()
-		fmt.Fprintf(os.Stderr, "adding new biblio_id: %s\n", biblioId)
-		p.AddIdentifier(NewURN("biblio_id", biblioId))
+		p.AddIdentifier(NewURN("biblio_id", uuid.NewString()))
 	}
 }
 
