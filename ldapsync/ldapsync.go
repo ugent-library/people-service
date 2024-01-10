@@ -173,8 +173,7 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 	newPerson := models.NewPerson()
 	newPerson.Active = true
 
-	depIds := []string{}
-	facultyIds := []string{}
+	orgIds := []string{}
 
 	for _, attr := range ldapEntry.Attributes {
 		for _, val := range attr.Values {
@@ -202,20 +201,18 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 			case "objectClass":
 				newPerson.AddObjectClass(val)
 			case "ugentFaculty":
-				facultyIds = append(facultyIds, val)
+				orgIds = append(orgIds, val)
 			case "departmentNumber":
-				depIds = append(depIds, val)
+				orgIds = append(orgIds, val)
 			}
 		}
 	}
 
-	orgIds := []string{}
-
-	if len(depIds) > 0 {
-		orgIds = append(orgIds, depIds...)
+	if slices.Contains(newPerson.ObjectClass, "ugentFormerEmployee") {
+		orgIds = append(orgIds, "UGent")
 	}
-	if len(facultyIds) > 0 {
-		orgIds = append(orgIds, facultyIds...)
+	if slices.Contains(newPerson.ObjectClass, "uzEmployee") {
+		orgIds = append(orgIds, "UZGent")
 	}
 
 	for _, orgId := range orgIds {
@@ -227,7 +224,10 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 		var org *models.Organization
 		if len(orgs) == 0 {
 			si.logger.Infof("adding dummy organization %s for person with name '%s'", orgId, newPerson.Name)
-			o, err := si.addDummyOrg(ctx, orgId)
+			newOrg := models.NewOrganization()
+			newOrg.NameEng = orgId
+			newOrg.AddIdentifier(models.NewURN("biblio_id", orgId))
+			o, err := si.repository.CreateOrganization(ctx, newOrg)
 			if err != nil {
 				return nil, err
 			}
@@ -239,65 +239,5 @@ func (si *Synchronizer) ldapEntryToPerson(ctx context.Context, ldapEntry *ldap.E
 		newPerson.AddOrganizationMember(newOrgMember)
 	}
 
-	if slices.Contains(newPerson.ObjectClass, "ugentFormerEmployee") {
-		orgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("biblio_id", "UGent"))
-		if err != nil {
-			return nil, err
-		}
-		var org *models.Organization
-		if len(orgs) == 0 {
-			o, err := si.addDummyOrg(ctx, "UGent")
-			if err != nil {
-				return nil, err
-			}
-			org = o
-		} else {
-			org = orgs[0]
-		}
-		hasOrg := false
-		for _, orgMember := range newPerson.Organization {
-			if orgMember.ID == org.ID {
-				hasOrg = true
-				break
-			}
-		}
-		if !hasOrg {
-			newPerson.AddOrganizationMember(models.NewOrganizationMember(org.ID))
-		}
-	}
-	if slices.Contains(newPerson.ObjectClass, "uzEmployee") {
-		orgs, err := si.repository.GetOrganizationsByIdentifier(ctx, models.NewURN("biblio_id", "UZGent"))
-		if err != nil {
-			return nil, err
-		}
-		var org *models.Organization
-		if len(orgs) == 0 {
-			o, err := si.addDummyOrg(ctx, "UZGent")
-			if err != nil {
-				return nil, err
-			}
-			org = o
-		} else {
-			org = orgs[0]
-		}
-		hasOrg := false
-		for _, orgMember := range newPerson.Organization {
-			if orgMember.ID == org.ID {
-				hasOrg = true
-				break
-			}
-		}
-		if !hasOrg {
-			newPerson.AddOrganizationMember(models.NewOrganizationMember(org.ID))
-		}
-	}
-
 	return newPerson, nil
-}
-
-func (si *Synchronizer) addDummyOrg(ctx context.Context, orgId string) (*models.Organization, error) {
-	org := models.NewOrganization()
-	org.NameEng = orgId
-	org.AddIdentifier(models.NewURN("biblio_id", orgId))
-	return si.repository.CreateOrganization(ctx, org)
 }
