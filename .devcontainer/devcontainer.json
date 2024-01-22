@@ -19,7 +19,7 @@
 	// "customizations": {}
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": ["db-app:5432"],
+	"forwardPorts": ["db-app:3251"],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// 
