@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+        - ./.env
+    volumes:
+      - ../..:/src:cached
+    command: 
+      - bash
+      - -c
+      - |
+        cd /src
+        go mod download -x
+        tern status
+        tern migrate
+        sleep infinity
+    depends_on:
+      - db-app
+
+  db-app:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    user: postgres
+    volumes:
+      - ../tmp/app-db/db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DATABASE: people
+      POSTGRES_USER: people
+      POSTGRES_PASSWORD: people
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U people -d people"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

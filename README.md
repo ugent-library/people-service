@@ -1,13 +1,13 @@
 # people-service
 Person service
 
-# Build process
+## Build process
 
 ```
 go build
 ```
 
-# Prepare environment variables
+## Prepare environment variables
 
 Declare the following environment variables,
 
@@ -87,7 +87,7 @@ or store them in file `.env` in the root of your folder (important: exclude `exp
 
   required: `true`
 
-# Run database migrations
+## Run database migrations
 
 We use [tern](https://github.com/jackc/tern) for database migrations.
 
@@ -99,36 +99,15 @@ tern status --conn-string $PEOPLE_DB_URL -m etc/migrations
 tern migrate --conn-string $PEOPLE_DB_URL -m etc/migrations
 ```
 
-# Start the api server (openapi)
+## Start the api server (openapi)
 
 ```
 $ ./people-service server
 ```
 
-# run in docker
+## Update flow organizations
 
-Build base docker image `people-service`:
-
-```
-$ docker build -t ugentlib/people-service .
-$ docker push ugentlib/people-service
-```
-
-If image `people-service` is already docker github,
-
-then you may skip that step.
-
-Start set of services using `docker compose`:
-
-```
-$ docker compose up
-```
-
-Docker compose uses that image `people-service`
-
-# Update flow organizations
-
-## nightly cron job that upserts person records
+### nightly cron job that upserts person records
 
 A nightly cron job reads person records from the ugent ldap
 
@@ -153,3 +132,31 @@ The following attributes are overwritten:
 * `organization`.
 
 Note that if no organization be found based on `identifier->'ugent'` then no (dummy) organization record is made for it. In that case the attribute is ignored.
+
+## Dev Containers
+
+This project supports [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers). Following these steps
+will auto setup a containerized development environment for this project. In VS Code, you will be able to start a terminal
+that logs into a Docker container. This will allow you to write and interact with the code inside a self-contained sandbox.
+
+**Installing the Dev Containers extension**
+
+1. Open VS Code.
+2. Go to the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension page.
+3. Click the `install` button to install the extension in VS Code.
+
+**Open in Dev Containers**
+
+1. Open the project directory in VS Code.
+2. Click on the "Open a remote window" button in the lower left window corner.
+3. Choose "reopen in container" from the popup menu.
+4. The green button should now read "Dev Container: App name" when successfully opened.
+5. Open a new terminal in VS Code from the `Terminal` menu link.
+
+You are now logged into the dev container and ready to develop code, write code, push to git or execute commands.
+
+**Run the project**
+
+1. Open a new terminal in VS Code from the `Terminal` menu link.
+2. Execute this command `reflex -d none -c reflex.docker.conf`.
+3. Once the application has started, VS Code will show a popup with a link that opens the project in your browser.
