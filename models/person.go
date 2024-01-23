@@ -1,10 +1,12 @@
 package models
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
 )
 
@@ -206,6 +208,41 @@ func (p *Person) Dup() *Person {
 	}
 
 	return newP
+}
+
+func (u *Person) Fake(faker *gofakeit.Faker) (any, error) {
+	givenName := faker.FirstName()
+	familyName := faker.LastName()
+
+	ugentUserName := strings.ToLower(fmt.Sprintf("%s%s", givenName, familyName))
+	ugentUserNameUrn := fmt.Sprintf("urn:ugent_username:%s", ugentUserName)
+	ugentHistoricUgentId := faker.Number(100000000000, 199999999999)
+	ugentHistoricUgentIdUrn := fmt.Sprintf("urn:historic_ugent_id:%d", ugentHistoricUgentId)
+	ugentbarCode := faker.Number(100000000000, 199999999999)
+	ugentbarCodeUrn := fmt.Sprintf("urn:ugent_barcode:%d", ugentbarCode)
+
+	ids := make([]*URN, 0, 3)
+	id, _ := ParseURN(ugentUserNameUrn)
+	ids = append(ids, id)
+	id, _ = ParseURN(ugentHistoricUgentIdUrn)
+	ids = append(ids, id)
+	id, _ = ParseURN(ugentbarCodeUrn)
+	ids = append(ids, id)
+
+	email := fmt.Sprintf("%s.%s@ugent.be", strings.ToLower(givenName), strings.ToLower(familyName))
+
+	return Person{
+		Active:              faker.Bool(),
+		Name:                fmt.Sprintf("%s %s", givenName, familyName),
+		Email:               email,
+		GivenName:           givenName,
+		FamilyName:          familyName,
+		PreferredGivenName:  givenName,
+		PreferredFamilyName: familyName,
+		BirthDate:           faker.PastDate().Format("20060201"),
+		HonorificPrefix:     faker.NamePrefix(),
+		Identifier:          ids,
+	}, nil
 }
 
 type ByPerson []*Person
