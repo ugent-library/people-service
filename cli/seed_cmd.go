@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(seedCmd)
 	seedCmd.Flags().Bool("force", false, "force seeding the database")
 	seedCmd.Flags().String("people-file", "", "json formatted file containing people to import")
+	seedCmd.Flags().Bool("without-generated-people", false, "do not generate dummy people")
 }
 
 var seedCmd = &cobra.Command{
@@ -45,20 +46,28 @@ var seedCmd = &cobra.Command{
 			}
 		}
 
-		// Generate organisations
+		// Generate organisations if they don't exist yet
 		orgs := []string{"CA", "DS", "DI", "EB", "FW", "GE", "LA", "LW", "PS", "PP", "RE", "TW", "WE", "GUK"}
 		for _, val := range orgs {
-			org := models.NewOrganization()
-			org.NameEng = val
-			org.AddIdentifier(models.NewURN("biblio_id", val))
+			urn := models.NewURN("biblio_id", val)
 
-			if _, err = repo.SaveOrganization(ctx, org); err != nil {
+			orgs, err := repo.GetOrganizationsByIdentifier(ctx, urn)
+			if err != nil {
 				return err
 			}
 
+			if len(orgs) == 0 {
+				org := models.NewOrganization()
+				org.NameEng = val
+				org.AddIdentifier(urn)
+
+				if _, err = repo.SaveOrganization(ctx, org); err != nil {
+					return err
+				}
+			}
 		}
 
-		// Read users from an optional JSON file
+		// Generate users from an optional JSON file, if they don't exist yet
 		if file, _ := cmd.Flags().GetString("people-file"); file != "" {
 			fh, err := os.Open(file)
 			if err != nil {
@@ -75,6 +84,25 @@ var seedCmd = &cobra.Command{
 			}
 
 			for _, person := range people {
+				urns := person.GetIdentifierByNS("ugent_username")
+
+				// Don't save a person if they don't have a ugent_username identifier
+				if len(urns) == 0 {
+					continue
+				}
+
+				// Force upsert
+				people, err := repo.GetPeopleByIdentifier(ctx, urns[0])
+				if err != nil {
+					return err
+				}
+
+				if len(people) > 0 {
+					p := people[0]
+					person.DateCreated = p.DateCreated
+					person.ID = p.ID
+				}
+
 				if _, err = repo.SavePerson(ctx, &person); err != nil {
 					return err
 				}
@@ -82,24 +110,26 @@ var seedCmd = &cobra.Command{
 		}
 
 		// Generate 100 people
-		for i := 0; i < 100; i++ {
-			var person models.Person
-			gofakeit.Struct(&person)
+		if without, _ := cmd.Flags().GetBool("without-generated-people"); !without {
+			for i := 0; i < 100; i++ {
+				var person models.Person
+				gofakeit.Struct(&person)
 
-			// Hook this person to a random organization
-			org := gofakeit.RandomString(orgs)
-			urn := models.NewURN("biblio_id", org)
+				// Hook this person to a random organization
+				org := gofakeit.RandomString(orgs)
+				urn := models.NewURN("biblio_id", org)
 
-			orgs, _ := repo.GetOrganizationsByIdentifier(ctx, urn)
+				orgs, _ := repo.GetOrganizationsByIdentifier(ctx, urn)
 
-			if len(orgs) > 0 {
-				org := orgs[0]
-				newOrgMember := models.NewOrganizationMember(org.ID)
-				person.AddOrganizationMember(newOrgMember)
-			}
+				if len(orgs) > 0 {
+					org := orgs[0]
+					newOrgMember := models.NewOrganizationMember(org.ID)
+					person.AddOrganizationMember(newOrgMember)
+				}
 
-			if _, err = repo.SavePerson(ctx, &person); err != nil {
-				return err
+				if _, err = repo.SavePerson(ctx, &person); err != nil {
+					return err
+				}
 			}
 		}
 
