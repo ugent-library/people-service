@@ -99,6 +99,11 @@ var seedCmd = &cobra.Command{
 
 				if len(people) > 0 {
 					p := people[0]
+
+					biblioId := p.GetIdentifierByNS("biblio_id")
+					ugentUsername := person.GetIdentifierByNS("ugent_username")
+					person.SetIdentifier(biblioId[0], ugentUsername[0])
+
 					person.DateCreated = p.DateCreated
 					person.ID = p.ID
 				}
