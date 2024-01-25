@@ -14,7 +14,7 @@ CREATE TABLE people (
 );
 
 CREATE TABLE people_identifiers (
-  person_id BIGINT REFERENCES people,
+  person_id BIGINT NOT NULL REFERENCES people,
   type TEXT CONSTRAINT CHECK (type <> ''),
   value TEXT CONSTRAINT CHECK (value <> ''),
   PRIMARY KEY (type, value)
