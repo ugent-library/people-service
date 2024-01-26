@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ugent-library/people-service/models"
+	"github.com/ugent-library/people-service/old/models"
 )
 
 type Service struct {

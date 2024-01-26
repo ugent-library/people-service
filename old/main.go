@@ -1,6 +1,6 @@
 package main
 
-import "github.com/ugent-library/people-service/cli"
+import "github.com/ugent-library/people-service/old/cli"
 
 func main() {
 	cli.Execute()

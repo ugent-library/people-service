@@ -15,8 +15,8 @@ import (
 	"github.com/ogen-go/ogen/ogenerrors"
 	"github.com/ory/graceful"
 	"github.com/spf13/cobra"
-	"github.com/ugent-library/people-service/api/v1"
-	"github.com/ugent-library/people-service/public"
+	"github.com/ugent-library/people-service/old/api/v1"
+	"github.com/ugent-library/people-service/old/public"
 	"github.com/ugent-library/zaphttp"
 	"github.com/ugent-library/zaphttp/zapchi"
 )

@@ -7,8 +7,8 @@ import (
 	"sort"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/ugent-library/people-service/models"
-	"github.com/ugent-library/people-service/ugentldap"
+	"github.com/ugent-library/people-service/old/models"
+	"github.com/ugent-library/people-service/old/ugentldap"
 	"go.uber.org/zap"
 )
 

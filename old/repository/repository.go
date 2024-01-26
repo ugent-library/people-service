@@ -14,7 +14,7 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
 	"github.com/ugent-library/crypt"
-	"github.com/ugent-library/people-service/models"
+	"github.com/ugent-library/people-service/old/models"
 )
 
 const (

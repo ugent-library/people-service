@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ugent-library/people-service/modifiedfs"
+	"github.com/ugent-library/people-service/old/modifiedfs"
 )
 
 //go:embed openapi.yaml

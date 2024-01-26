@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"github.com/ugent-library/people-service/models"
-	"github.com/ugent-library/people-service/repository"
-	"github.com/ugent-library/people-service/ugentldap"
+	"github.com/ugent-library/people-service/old/models"
+	"github.com/ugent-library/people-service/old/repository"
+	"github.com/ugent-library/people-service/old/ugentldap"
 )
 
 func newRepository() (models.Repository, error) {

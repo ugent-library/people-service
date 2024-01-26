@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/ugent-library/people-service/ldapsync"
+	"github.com/ugent-library/people-service/old/ldapsync"
 )
 
 var ldapSyncCmd = &cobra.Command{
