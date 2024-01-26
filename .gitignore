@@ -20,16 +20,7 @@ node_modules
 !.gitkeep
 
 # Live reloading
-/reflex.conf
+reflex.conf
 
 # Config
-/.env
-
-# build file
-/people-service
-
-/atlas.hcl
-/tern.conf
-
-# docker
-tmp
+.env
