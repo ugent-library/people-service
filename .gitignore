@@ -24,3 +24,6 @@ reflex.conf
 
 # Config
 .env
+
+# Local workspace
+go.work*

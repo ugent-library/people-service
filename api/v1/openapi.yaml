@@ -1,0 +1,95 @@
+openapi: 3.1.0
+
+info:
+  title: People Service
+  version: 0.0.1
+
+servers:
+  - url: /api/v1
+
+paths:
+  "/add-person":
+    post:
+      summary: "Upsert a single person"
+      description: "Upsert a single person"
+      operationId: "AddPerson"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPersonRequest"
+        required: true
+      responses:
+        "200":
+          description: "Added person successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        default:
+          $ref: "#/components/responses/Error"
+
+security:
+  - apiKey: []
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    AddPersonRequest:
+      $ref: "#/components/schemas/Person"
+
+    Person:
+      type: object
+      properties:
+        active:
+          type: boolean
+        name:
+          type: string
+        preferred_name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        preferred_given_name:
+          type: string
+        preferred_family_name:
+          type: string
+        honorific_prefix:
+          type: string
+        email:
+          type: string
+        identifiers:
+          type: object
+          minProperties: 1
+          additionalProperties:
+            type: array
+            items:
+              type: string
+            minItems: 1
+      required: [active, name, identifiers]
