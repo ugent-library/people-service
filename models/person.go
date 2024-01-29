@@ -4,7 +4,9 @@ import "time"
 
 type Person struct {
 	Active              bool                `json:"active"`
-	Name                string              `json:"name"`
+	Roles               []string            `json:"roles,omitempty"`
+	Identifiers         map[string][]string `json:"identifiers,omitempty"`
+	Name                string              `json:"name,omitempty"`
 	PreferredName       string              `json:"preferred_name,omitempty"`
 	GivenName           string              `json:"given_name,omitempty"`
 	FamilyName          string              `json:"family_name,omitempty"`
@@ -12,8 +14,6 @@ type Person struct {
 	PreferredFamilyName string              `json:"preferred_family_name,omitempty"`
 	HonorificPrefix     string              `json:"honorific_prefix,omitempty"`
 	Email               string              `json:"email,omitempty"`
-	Roles               []string            `json:"roles,omitempty"`
-	Identifiers         map[string][]string `json:"identifiers,omitempty"`
 }
 
 type PersonRecord struct {

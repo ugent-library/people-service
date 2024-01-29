@@ -10,8 +10,8 @@ CREATE TABLE people (
   honorific_prefix TEXT,
   email TEXT,
   roles TEXT[],
-  created_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE people_identifiers (

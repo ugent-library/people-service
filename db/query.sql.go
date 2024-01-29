@@ -7,17 +7,103 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addPerson = `-- name: AddPerson :exec
+const createPerson = `-- name: CreatePerson :one
 INSERT INTO people (
-  name
-) VALUES (
-  $1
-)
+  active,
+  name,
+  preferred_name,
+  given_name,
+  family_name,
+  preferred_given_name,
+  preferred_family_name,
+  honorific_prefix,
+  email
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id
 `
 
-func (q *Queries) AddPerson(ctx context.Context, name string) error {
-	_, err := q.db.Exec(ctx, addPerson, name)
+type CreatePersonParams struct {
+	Active              bool
+	Name                string
+	PreferredName       pgtype.Text
+	GivenName           pgtype.Text
+	FamilyName          pgtype.Text
+	PreferredGivenName  pgtype.Text
+	PreferredFamilyName pgtype.Text
+	HonorificPrefix     pgtype.Text
+	Email               pgtype.Text
+}
+
+func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int64, error) {
+	row := q.db.QueryRow(ctx, createPerson,
+		arg.Active,
+		arg.Name,
+		arg.PreferredName,
+		arg.GivenName,
+		arg.FamilyName,
+		arg.PreferredGivenName,
+		arg.PreferredFamilyName,
+		arg.HonorificPrefix,
+		arg.Email,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createPersonIdentifier = `-- name: CreatePersonIdentifier :exec
+INSERT INTO people_identifiers (
+  person_id,
+  type,
+  value
+) VALUES ($1, $2, $3)
+`
+
+type CreatePersonIdentifierParams struct {
+	PersonID int64
+	Type     string
+	Value    string
+}
+
+func (q *Queries) CreatePersonIdentifier(ctx context.Context, arg CreatePersonIdentifierParams) error {
+	_, err := q.db.Exec(ctx, createPersonIdentifier, arg.PersonID, arg.Type, arg.Value)
 	return err
+}
+
+const getPersonByIdentifier = `-- name: GetPersonByIdentifier :one
+SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.roles, p.created_at, p.updated_at
+FROM people p
+INNER JOIN people_identifiers pi
+  ON pi.person_id = p.id
+  WHERE pi.type = $1 AND pi.value = $2
+`
+
+type GetPersonByIdentifierParams struct {
+	Type  string
+	Value string
+}
+
+func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIdentifierParams) (Person, error) {
+	row := q.db.QueryRow(ctx, getPersonByIdentifier, arg.Type, arg.Value)
+	var i Person
+	err := row.Scan(
+		&i.ID,
+		&i.Active,
+		&i.Name,
+		&i.PreferredName,
+		&i.GivenName,
+		&i.FamilyName,
+		&i.PreferredGivenName,
+		&i.PreferredFamilyName,
+		&i.HonorificPrefix,
+		&i.Email,
+		&i.Roles,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

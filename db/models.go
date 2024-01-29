@@ -25,6 +25,7 @@ type Person struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Roles               []string
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }
