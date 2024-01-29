@@ -220,22 +220,33 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Roles != nil {
+			e.FieldStart("roles")
+			e.ArrStart()
+			for _, elem := range s.Roles {
+				e.Str(elem)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
 		e.FieldStart("identifiers")
 		s.Identifiers.Encode(e)
 	}
 }
 
-var jsonFieldsNameOfPerson = [10]string{
-	0: "active",
-	1: "name",
-	2: "preferred_name",
-	3: "given_name",
-	4: "family_name",
-	5: "preferred_given_name",
-	6: "preferred_family_name",
-	7: "honorific_prefix",
-	8: "email",
-	9: "identifiers",
+var jsonFieldsNameOfPerson = [11]string{
+	0:  "active",
+	1:  "name",
+	2:  "preferred_name",
+	3:  "given_name",
+	4:  "family_name",
+	5:  "preferred_given_name",
+	6:  "preferred_family_name",
+	7:  "honorific_prefix",
+	8:  "email",
+	9:  "roles",
+	10: "identifiers",
 }
 
 // Decode decodes Person from json.
@@ -341,8 +352,27 @@ func (s *Person) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"email\"")
 			}
+		case "roles":
+			if err := func() error {
+				s.Roles = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Roles = append(s.Roles, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"roles\"")
+			}
 		case "identifiers":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.Identifiers.Decode(d); err != nil {
 					return err
@@ -362,7 +392,7 @@ func (s *Person) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b00000011,
-		0b00000010,
+		0b00000100,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

@@ -133,6 +133,7 @@ type Person struct {
 	PreferredFamilyName OptString         `json:"preferred_family_name"`
 	HonorificPrefix     OptString         `json:"honorific_prefix"`
 	Email               OptString         `json:"email"`
+	Roles               []string          `json:"roles"`
 	Identifiers         PersonIdentifiers `json:"identifiers"`
 }
 
@@ -179,6 +180,11 @@ func (s *Person) GetHonorificPrefix() OptString {
 // GetEmail returns the value of Email.
 func (s *Person) GetEmail() OptString {
 	return s.Email
+}
+
+// GetRoles returns the value of Roles.
+func (s *Person) GetRoles() []string {
+	return s.Roles
 }
 
 // GetIdentifiers returns the value of Identifiers.
@@ -229,6 +235,11 @@ func (s *Person) SetHonorificPrefix(val OptString) {
 // SetEmail sets the value of Email.
 func (s *Person) SetEmail(val OptString) {
 	s.Email = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *Person) SetRoles(val []string) {
+	s.Roles = val
 }
 
 // SetIdentifiers sets the value of Identifiers.

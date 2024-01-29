@@ -12,6 +12,7 @@ type Person struct {
 	PreferredFamilyName string              `json:"preferred_family_name,omitempty"`
 	HonorificPrefix     string              `json:"honorific_prefix,omitempty"`
 	Email               string              `json:"email,omitempty"`
+	Roles               []string            `json:"roles,omitempty"`
 	Identifiers         map[string][]string `json:"identifiers,omitempty"`
 }
 

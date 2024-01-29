@@ -14,10 +14,9 @@ type Config struct {
 	Env    string `env:"PEOPLE_ENV" envDefault:"production"`
 	Host   string `env:"PEOPLE_HOST"`
 	Port   int    `env:"PEOPLE_PORT" envDefault:"3000"`
-	APIKey string `env:"PEOPLE_API_KEY"`
+	APIKey string `env:"PEOPLE_API_KEY,notEmpty"`
 	Repo   struct {
-		Conn   string `env:"CONN,notEmpty"`
-		Secret string `env:"SECRET,notEmpty"`
+		Conn string `env:"CONN,notEmpty"`
 	} `envPrefix:"PEOPLE_REPO_"`
 }
 

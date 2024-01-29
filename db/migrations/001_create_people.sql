@@ -9,6 +9,7 @@ CREATE TABLE people (
   preferred_family_name TEXT,
   honorific_prefix TEXT,
   email TEXT,
+  roles TEXT[],
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
@@ -22,4 +23,5 @@ CREATE TABLE people_identifiers (
 
 ---- create above / drop below ----
 
-DROP TABLE IF EXISTS people CASCADE;
+DROP TABLE people CASCADE;
+DROP TABLE people_identifiers CASCADE;
