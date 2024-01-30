@@ -15,7 +15,7 @@ INSERT INTO people (
   preferred_given_name,
   preferred_family_name,
   honorific_prefix,
-  email,
+  email
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id;
 
