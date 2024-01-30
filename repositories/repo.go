@@ -35,7 +35,7 @@ func New(c Config) (*Repo, error) {
 }
 
 func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
-	var existingRecs []db.Person
+	var existingRecs []db.GetPersonByIdentifierRow
 	for t, vals := range p.Identifiers {
 		for _, val := range vals {
 			rec, err := r.queries.GetPersonByIdentifier(ctx, db.GetPersonByIdentifierParams{Type: t, Value: val})

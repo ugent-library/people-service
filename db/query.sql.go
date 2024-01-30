@@ -75,11 +75,15 @@ func (q *Queries) CreatePersonIdentifier(ctx context.Context, arg CreatePersonId
 }
 
 const getPersonByIdentifier = `-- name: GetPersonByIdentifier :one
-SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.roles, p.created_at, p.updated_at
-FROM people p
-INNER JOIN people_identifiers pi
-  ON pi.person_id = p.id
-  WHERE pi.type = $1 AND pi.value = $2
+WITH identifiers AS (
+  SELECT i1.person_id, i1.type, i1.value
+  FROM people_identifiers i1
+  LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
+  WHERE i2.type = $1 AND i2.value = $2	
+)
+SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.roles, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
+FROM people p, identifiers i WHERE p.id = i.person_id
+GROUP BY p.id
 `
 
 type GetPersonByIdentifierParams struct {
@@ -87,9 +91,26 @@ type GetPersonByIdentifierParams struct {
 	Value string
 }
 
-func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIdentifierParams) (Person, error) {
+type GetPersonByIdentifierRow struct {
+	ID                  int64
+	Active              bool
+	Name                string
+	PreferredName       pgtype.Text
+	GivenName           pgtype.Text
+	FamilyName          pgtype.Text
+	PreferredGivenName  pgtype.Text
+	PreferredFamilyName pgtype.Text
+	HonorificPrefix     pgtype.Text
+	Email               pgtype.Text
+	Roles               []string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	Identifiers         []byte
+}
+
+func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIdentifierParams) (GetPersonByIdentifierRow, error) {
 	row := q.db.QueryRow(ctx, getPersonByIdentifier, arg.Type, arg.Value)
-	var i Person
+	var i GetPersonByIdentifierRow
 	err := row.Scan(
 		&i.ID,
 		&i.Active,
@@ -104,6 +125,7 @@ func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIden
 		&i.Roles,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Identifiers,
 	)
 	return i, err
 }

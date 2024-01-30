@@ -1,9 +1,13 @@
 -- name: GetPersonByIdentifier :one
-SELECT p.*
-FROM people p
-INNER JOIN people_identifiers pi
-  ON pi.person_id = p.id
-  WHERE pi.type = $1 AND pi.value = $2;
+WITH identifiers AS (
+  SELECT i1.*
+  FROM people_identifiers i1
+  LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
+  WHERE i2.type = $1 AND i2.value = $2	
+)
+SELECT p.*, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
+FROM people p, identifiers i WHERE p.id = i.person_id
+GROUP BY p.id;
 
 -- name: CreatePerson :one
 INSERT INTO people (
