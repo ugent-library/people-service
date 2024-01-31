@@ -23,9 +23,36 @@ INSERT INTO people (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id;
 
+-- name: UpdatePerson :exec
+UPDATE people SET (
+  active,
+  name,
+  preferred_name,
+  given_name,
+  family_name,
+  preferred_given_name,
+  preferred_family_name,
+  honorific_prefix,
+  email,
+  updated_at
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+WHERE id = $1;
+
+-- name: DeletePerson :exec
+DELETE FROM people
+WHERE id = $1;
+
 -- name: CreatePersonIdentifier :exec
 INSERT INTO people_identifiers (
   person_id,
   type,
   value
 ) VALUES ($1, $2, $3);
+
+-- name: MovePersonIdentifier :exec
+UPDATE people_identifiers SET person_id = ($3)
+WHERE type = $1 AND value = $2;
+
+-- name: DeletePersonIdentifier :exec
+DELETE FROM people_identifiers
+WHERE type = $1 AND value = $2;

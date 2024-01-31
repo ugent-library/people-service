@@ -18,6 +18,6 @@ type Person struct {
 
 type PersonRecord struct {
 	Person
-	DateCreated time.Time `json:"date_created,omitempty"`
-	DateUpdated time.Time `json:"date_updated,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 }

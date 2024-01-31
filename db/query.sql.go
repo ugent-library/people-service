@@ -74,6 +74,31 @@ func (q *Queries) CreatePersonIdentifier(ctx context.Context, arg CreatePersonId
 	return err
 }
 
+const deletePerson = `-- name: DeletePerson :exec
+DELETE FROM people
+WHERE id = $1
+`
+
+func (q *Queries) DeletePerson(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deletePerson, id)
+	return err
+}
+
+const deletePersonIdentifier = `-- name: DeletePersonIdentifier :exec
+DELETE FROM people_identifiers
+WHERE type = $1 AND value = $2
+`
+
+type DeletePersonIdentifierParams struct {
+	Type  string
+	Value string
+}
+
+func (q *Queries) DeletePersonIdentifier(ctx context.Context, arg DeletePersonIdentifierParams) error {
+	_, err := q.db.Exec(ctx, deletePersonIdentifier, arg.Type, arg.Value)
+	return err
+}
+
 const getPersonByIdentifier = `-- name: GetPersonByIdentifier :one
 WITH identifiers AS (
   SELECT i1.person_id, i1.type, i1.value
@@ -128,4 +153,67 @@ func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIden
 		&i.Identifiers,
 	)
 	return i, err
+}
+
+const movePersonIdentifier = `-- name: MovePersonIdentifier :exec
+UPDATE people_identifiers SET person_id = ($3)
+WHERE type = $1 AND value = $2
+`
+
+type MovePersonIdentifierParams struct {
+	Type     string
+	Value    string
+	PersonID int64
+}
+
+func (q *Queries) MovePersonIdentifier(ctx context.Context, arg MovePersonIdentifierParams) error {
+	_, err := q.db.Exec(ctx, movePersonIdentifier, arg.Type, arg.Value, arg.PersonID)
+	return err
+}
+
+const updatePerson = `-- name: UpdatePerson :exec
+UPDATE people SET (
+  active,
+  name,
+  preferred_name,
+  given_name,
+  family_name,
+  preferred_given_name,
+  preferred_family_name,
+  honorific_prefix,
+  email,
+  updated_at
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+WHERE id = $1
+`
+
+type UpdatePersonParams struct {
+	ID                  int64
+	Active              bool
+	Name                string
+	PreferredName       pgtype.Text
+	GivenName           pgtype.Text
+	FamilyName          pgtype.Text
+	PreferredGivenName  pgtype.Text
+	PreferredFamilyName pgtype.Text
+	HonorificPrefix     pgtype.Text
+	Email               pgtype.Text
+	UpdatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) error {
+	_, err := q.db.Exec(ctx, updatePerson,
+		arg.ID,
+		arg.Active,
+		arg.Name,
+		arg.PreferredName,
+		arg.GivenName,
+		arg.FamilyName,
+		arg.PreferredGivenName,
+		arg.PreferredFamilyName,
+		arg.HonorificPrefix,
+		arg.Email,
+		arg.UpdatedAt,
+	)
+	return err
 }
