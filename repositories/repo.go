@@ -47,13 +47,22 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	queries := r.queries.WithTx(tx)
 
-	// TODO we only need the identifiers, not the person
+	// TODO we only need the identifiers, not the person; inefficient
 	var existingRecs []db.GetPersonByIdentifierRow
 	for t, vals := range p.Identifiers {
 		for _, val := range vals {
 			rec, err := queries.GetPersonByIdentifier(ctx, db.GetPersonByIdentifierParams{Type: t, Value: val})
 			if err == nil {
-				existingRecs = append(existingRecs, rec)
+				dup := false
+				for _, r := range existingRecs {
+					if r.ID == rec.ID {
+						dup = true
+						break
+					}
+				}
+				if !dup {
+					existingRecs = append(existingRecs, rec)
+				}
 			} else if err != pgx.ErrNoRows {
 				return err
 			}
