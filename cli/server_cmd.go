@@ -82,10 +82,10 @@ var serverCmd = &cobra.Command{
 		mux.Get("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "api/v1/openapi.yaml")
 		})
-		mux.Mount("/api/v1/docs/", v5emb.New(
+		mux.Mount("/api/v1/docs", v5emb.New(
 			"People service",
 			"/api/v1/openapi.yaml",
-			"/api/v1/docs/",
+			"/api/v1/docs",
 		))
 
 		// start server
