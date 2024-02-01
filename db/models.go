@@ -6,6 +6,7 @@ package db
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/ugent-library/people-service/models"
 )
 
 type PeopleIdentifier struct {
@@ -25,7 +26,7 @@ type Person struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
-	Roles               []string
+	Attributes          []models.Attribute
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }

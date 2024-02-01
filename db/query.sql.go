@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/ugent-library/people-service/models"
 )
 
 const createPerson = `-- name: CreatePerson :one
@@ -21,8 +22,9 @@ INSERT INTO people (
   preferred_given_name,
   preferred_family_name,
   honorific_prefix,
-  email
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  email,
+  attributes
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id
 `
 
@@ -36,6 +38,7 @@ type CreatePersonParams struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Attributes          []models.Attribute
 }
 
 func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int64, error) {
@@ -49,6 +52,7 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int
 		arg.PreferredFamilyName,
 		arg.HonorificPrefix,
 		arg.Email,
+		arg.Attributes,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -106,7 +110,7 @@ WITH identifiers AS (
   LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
   WHERE i2.type = $1 AND i2.value = $2	
 )
-SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.roles, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
+SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.attributes, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
 FROM people p, identifiers i WHERE p.id = i.person_id
 GROUP BY p.id
 `
@@ -127,7 +131,7 @@ type GetPersonByIdentifierRow struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
-	Roles               []string
+	Attributes          []models.Attribute
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	Identifiers         []byte
@@ -147,7 +151,7 @@ func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIden
 		&i.PreferredFamilyName,
 		&i.HonorificPrefix,
 		&i.Email,
-		&i.Roles,
+		&i.Attributes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Identifiers,

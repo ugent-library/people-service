@@ -81,6 +81,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 			PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
 			HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 			Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
+			Attributes:          p.Attributes,
 		})
 		if err != nil {
 			return err

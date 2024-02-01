@@ -9,7 +9,7 @@ CREATE TABLE people (
   preferred_family_name TEXT CHECK (name <> ''),
   honorific_prefix TEXT CHECK (name <> ''),
   email TEXT CHECK (name <> ''),
-  roles TEXT[],
+  attributes JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

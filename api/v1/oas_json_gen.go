@@ -13,6 +13,136 @@ import (
 )
 
 // Encode implements json.Marshaler.
+func (s *Attribute) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *Attribute) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("scope")
+		e.Str(s.Scope)
+	}
+	{
+		e.FieldStart("key")
+		e.Str(s.Key)
+	}
+	{
+		e.FieldStart("value")
+		e.Str(s.Value)
+	}
+}
+
+var jsonFieldsNameOfAttribute = [3]string{
+	0: "scope",
+	1: "key",
+	2: "value",
+}
+
+// Decode decodes Attribute from json.
+func (s *Attribute) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode Attribute to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "scope":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Scope = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"scope\"")
+			}
+		case "key":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Key = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"key\"")
+			}
+		case "value":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Value = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"value\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode Attribute")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfAttribute) {
+					name = jsonFieldsNameOfAttribute[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *Attribute) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *Attribute) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *Error) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -333,11 +463,11 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.Roles != nil {
-			e.FieldStart("roles")
+		if s.Attributes != nil {
+			e.FieldStart("attributes")
 			e.ArrStart()
-			for _, elem := range s.Roles {
-				e.Str(elem)
+			for _, elem := range s.Attributes {
+				elem.Encode(e)
 			}
 			e.ArrEnd()
 		}
@@ -362,7 +492,7 @@ var jsonFieldsNameOfPerson = [11]string{
 	6:  "preferred_family_name",
 	7:  "honorific_prefix",
 	8:  "email",
-	9:  "roles",
+	9:  "attributes",
 	10: "identifiers",
 }
 
@@ -469,24 +599,22 @@ func (s *Person) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"email\"")
 			}
-		case "roles":
+		case "attributes":
 			if err := func() error {
-				s.Roles = make([]string, 0)
+				s.Attributes = make([]Attribute, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem string
-					v, err := d.Str()
-					elem = string(v)
-					if err != nil {
+					var elem Attribute
+					if err := elem.Decode(d); err != nil {
 						return err
 					}
-					s.Roles = append(s.Roles, elem)
+					s.Attributes = append(s.Attributes, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"roles\"")
+				return errors.Wrap(err, "decode field \"attributes\"")
 			}
 		case "identifiers":
 			requiredBitSet[1] |= 1 << 2

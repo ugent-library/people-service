@@ -85,17 +85,30 @@ components:
         email:
           type: string
           minLength: 1
-        roles:
+        attributes:
           type: array
           items:
-            type: string
-            minLength: 1
+            $ref: "#/components/schemas/Attribute"
         identifiers:
           type: array
           items:
             $ref: "#/components/schemas/Identifier"
           minItems: 1
       required: [active, name, identifiers]
+
+    Attribute:
+      type: object
+      properties:
+        scope:
+          type: string
+          minLength: 1
+        key:
+          type: string
+          minLength: 1
+        value:
+          type: string
+          minLength: 1
+      required: [scope, key, value]
 
     Identifier:
       type: object

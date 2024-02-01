@@ -10,6 +10,75 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+func (s *Attribute) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.Scope)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "scope",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.Key)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "key",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.String{
+			MinLength:    1,
+			MinLengthSet: true,
+			MaxLength:    0,
+			MaxLengthSet: false,
+			Email:        false,
+			Hostname:     false,
+			Regex:        nil,
+		}).Validate(string(s.Value)); err != nil {
+			return errors.Wrap(err, "string")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "value",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *Identifier) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -269,18 +338,10 @@ func (s *Person) Validate() error {
 	}
 	if err := func() error {
 		var failures []validate.FieldError
-		for i, elem := range s.Roles {
+		for i, elem := range s.Attributes {
 			if err := func() error {
-				if err := (validate.String{
-					MinLength:    1,
-					MinLengthSet: true,
-					MaxLength:    0,
-					MaxLengthSet: false,
-					Email:        false,
-					Hostname:     false,
-					Regex:        nil,
-				}).Validate(string(elem)); err != nil {
-					return errors.Wrap(err, "string")
+				if err := elem.Validate(); err != nil {
+					return err
 				}
 				return nil
 			}(); err != nil {
@@ -296,7 +357,7 @@ func (s *Person) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "roles",
+			Name:  "attributes",
 			Error: err,
 		})
 	}

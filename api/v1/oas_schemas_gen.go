@@ -27,6 +27,43 @@ func (s *ApiKey) SetAPIKey(val string) {
 	s.APIKey = val
 }
 
+// Ref: #/components/schemas/Attribute
+type Attribute struct {
+	Scope string `json:"scope"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// GetScope returns the value of Scope.
+func (s *Attribute) GetScope() string {
+	return s.Scope
+}
+
+// GetKey returns the value of Key.
+func (s *Attribute) GetKey() string {
+	return s.Key
+}
+
+// GetValue returns the value of Value.
+func (s *Attribute) GetValue() string {
+	return s.Value
+}
+
+// SetScope sets the value of Scope.
+func (s *Attribute) SetScope(val string) {
+	s.Scope = val
+}
+
+// SetKey sets the value of Key.
+func (s *Attribute) SetKey(val string) {
+	s.Key = val
+}
+
+// SetValue sets the value of Value.
+func (s *Attribute) SetValue(val string) {
+	s.Value = val
+}
+
 // Ref: #/components/schemas/Error
 type Error struct {
 	Code    int64  `json:"code"`
@@ -162,7 +199,7 @@ type Person struct {
 	PreferredFamilyName OptString    `json:"preferred_family_name"`
 	HonorificPrefix     OptString    `json:"honorific_prefix"`
 	Email               OptString    `json:"email"`
-	Roles               []string     `json:"roles"`
+	Attributes          []Attribute  `json:"attributes"`
 	Identifiers         []Identifier `json:"identifiers"`
 }
 
@@ -211,9 +248,9 @@ func (s *Person) GetEmail() OptString {
 	return s.Email
 }
 
-// GetRoles returns the value of Roles.
-func (s *Person) GetRoles() []string {
-	return s.Roles
+// GetAttributes returns the value of Attributes.
+func (s *Person) GetAttributes() []Attribute {
+	return s.Attributes
 }
 
 // GetIdentifiers returns the value of Identifiers.
@@ -266,9 +303,9 @@ func (s *Person) SetEmail(val OptString) {
 	s.Email = val
 }
 
-// SetRoles sets the value of Roles.
-func (s *Person) SetRoles(val []string) {
-	s.Roles = val
+// SetAttributes sets the value of Attributes.
+func (s *Person) SetAttributes(val []Attribute) {
+	s.Attributes = val
 }
 
 // SetIdentifiers sets the value of Identifiers.

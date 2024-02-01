@@ -19,8 +19,9 @@ INSERT INTO people (
   preferred_given_name,
   preferred_family_name,
   honorific_prefix,
-  email
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+  email,
+  attributes
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: UpdatePerson :exec

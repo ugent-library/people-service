@@ -32,15 +32,17 @@ func (s *Service) AddPerson(ctx context.Context, p *Person) error {
 }
 
 func toPerson(p *Person) *models.Person {
-	identifiers := make([]models.PersonIdentifier, len(p.Identifiers))
+	attributes := make([]models.Attribute, len(p.Attributes))
+	for i, attr := range p.Attributes {
+		attributes[i] = models.Attribute(attr)
+	}
+	identifiers := make([]models.Identifier, len(p.Identifiers))
 	for i, id := range p.Identifiers {
-		identifiers[i] = models.PersonIdentifier(id)
+		identifiers[i] = models.Identifier(id)
 	}
 
 	return &models.Person{
 		Active:              p.Active,
-		Roles:               p.Roles,
-		Identifiers:         identifiers,
 		Name:                p.Name,
 		PreferredName:       p.PreferredName.Value,
 		GivenName:           p.GivenName.Value,
@@ -49,5 +51,7 @@ func toPerson(p *Person) *models.Person {
 		PreferredFamilyName: p.PreferredFamilyName.Value,
 		HonorificPrefix:     p.HonorificPrefix.Value,
 		Email:               p.Email.Value,
+		Attributes:          attributes,
+		Identifiers:         identifiers,
 	}
 }
