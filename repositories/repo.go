@@ -123,7 +123,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	personID := existingPeople[0].ID
 
-	attributes := p.Attributes
+	attrs := p.Attributes
 
 	// TODO merge attributes with non conflicting scopes
 
@@ -140,7 +140,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 		PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
 		HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 		Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
-		Attributes:          attributes,
+		Attributes:          attrs,
 	})
 	if err != nil {
 		return err
