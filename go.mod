@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/vearutop/statigz v1.4.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/tools v0.17.0 // indirect
 )
@@ -43,6 +44,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/swaggest/swgui v1.8.0
 	github.com/ugent-library/httpx v0.0.0-20231026122034-e9de0b29458b
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect

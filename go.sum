@@ -75,10 +75,14 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/swaggest/swgui v1.8.0 h1:dPu8TsYIOraaObAkyNdoiLI8mu7nOqQ6SU7HOv254rM=
+github.com/swaggest/swgui v1.8.0/go.mod h1:YBaAVAwS3ndfvdtW8A4yWDJpge+W57y+8kW+f/DqZtU=
 github.com/ugent-library/httpx v0.0.0-20231026122034-e9de0b29458b h1:Y1gD0JpRWEBMPx2Nbc+hxTMjzVzegdWsEgI5q9N2meE=
 github.com/ugent-library/httpx v0.0.0-20231026122034-e9de0b29458b/go.mod h1:+m4mWcYSpZknAPTanWib+3cehzEyTDxz9ipf3NG3ezM=
 github.com/ugent-library/zaphttp v0.0.0-20231026141151-4cbb4e2eb87a h1:ksvBW/lgNQfvPALgAWgh9wJ0d90Q412pfH4oRx1MixA=
 github.com/ugent-library/zaphttp v0.0.0-20231026141151-4cbb4e2eb87a/go.mod h1:CzM8mO+4QRZi4Sx0rPTt9csR6b2IgbIyoveLwFz+bQM=
+github.com/vearutop/statigz v1.4.0 h1:RQL0KG3j/uyA/PFpHeZ/L6l2ta920/MxlOAIGEOuwmU=
+github.com/vearutop/statigz v1.4.0/go.mod h1:LYTolBLiz9oJISwiVKnOQoIwhO1LWX1A7OECawGS8XE=
 go.opentelemetry.io/otel v1.22.0 h1:xS7Ku+7yTFvDfDraDIJVpw7XPyuHlB9MCiqqX5mcJ6Y=
 go.opentelemetry.io/otel v1.22.0/go.mod h1:eoV4iAi3Ea8LkAEI9+GFT44O6T/D0GWAVFyZVCC6pMI=
 go.opentelemetry.io/otel/metric v1.22.0 h1:lypMQnGyJYeuYPhOM/bgjbFM6WE44W1/T45er4d8Hhg=

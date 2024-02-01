@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ory/graceful"
 	"github.com/spf13/cobra"
+	"github.com/swaggest/swgui/v5emb"
 	"github.com/ugent-library/httpx"
 	"github.com/ugent-library/people-service/api/v1"
 	"github.com/ugent-library/people-service/repositories"
@@ -81,7 +82,11 @@ var serverCmd = &cobra.Command{
 		mux.Get("/api/v1/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, "api/v1/openapi.yaml")
 		})
-		mux.Mount("/swagger/", http.StripPrefix("/swagger/", http.FileServer(http.Dir("public/swagger-ui-5.1.0"))))
+		mux.Mount("/api/v1/docs/", v5emb.New(
+			"People service",
+			"/api/v1/openapi.yaml",
+			"/api/v1/docs/",
+		))
 
 		// start server
 		server := graceful.WithDefaults(&http.Server{
