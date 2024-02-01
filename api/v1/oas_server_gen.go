@@ -13,7 +13,7 @@ type Handler interface {
 	// Upsert a single person.
 	//
 	// POST /add-person
-	AddPerson(ctx context.Context, req *Person) (*Person, error)
+	AddPerson(ctx context.Context, req *Person) error
 	// NewError creates *ErrorStatusCode from error returned by handler.
 	//
 	// Used for common default response.

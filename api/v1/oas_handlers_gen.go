@@ -124,7 +124,7 @@ func (s *Server) handleAddPersonRequest(args [0]string, argsEscaped bool, w http
 		}
 	}()
 
-	var response *Person
+	var response *AddPersonOK
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -139,7 +139,7 @@ func (s *Server) handleAddPersonRequest(args [0]string, argsEscaped bool, w http
 		type (
 			Request  = *Person
 			Params   = struct{}
-			Response = *Person
+			Response = *AddPersonOK
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -150,12 +150,12 @@ func (s *Server) handleAddPersonRequest(args [0]string, argsEscaped bool, w http
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.AddPerson(ctx, request)
+				err = s.h.AddPerson(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.AddPerson(ctx, request)
+		err = s.h.AddPerson(ctx, request)
 	}
 	if err != nil {
 		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {

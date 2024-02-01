@@ -10,6 +10,9 @@ func (s *ErrorStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// AddPersonOK is response for AddPerson operation.
+type AddPersonOK struct{}
+
 type ApiKey struct {
 	APIKey string
 }
@@ -76,6 +79,32 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
+// Ref: #/components/schemas/Identifier
+type Identifier struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// GetType returns the value of Type.
+func (s *Identifier) GetType() string {
+	return s.Type
+}
+
+// GetValue returns the value of Value.
+func (s *Identifier) GetValue() string {
+	return s.Value
+}
+
+// SetType sets the value of Type.
+func (s *Identifier) SetType(val string) {
+	s.Type = val
+}
+
+// SetValue sets the value of Value.
+func (s *Identifier) SetValue(val string) {
+	s.Value = val
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -124,17 +153,17 @@ func (o OptString) Or(d string) string {
 
 // Ref: #/components/schemas/Person
 type Person struct {
-	Active              bool              `json:"active"`
-	Name                string            `json:"name"`
-	PreferredName       OptString         `json:"preferred_name"`
-	GivenName           OptString         `json:"given_name"`
-	FamilyName          OptString         `json:"family_name"`
-	PreferredGivenName  OptString         `json:"preferred_given_name"`
-	PreferredFamilyName OptString         `json:"preferred_family_name"`
-	HonorificPrefix     OptString         `json:"honorific_prefix"`
-	Email               OptString         `json:"email"`
-	Roles               []string          `json:"roles"`
-	Identifiers         PersonIdentifiers `json:"identifiers"`
+	Active              bool         `json:"active"`
+	Name                string       `json:"name"`
+	PreferredName       OptString    `json:"preferred_name"`
+	GivenName           OptString    `json:"given_name"`
+	FamilyName          OptString    `json:"family_name"`
+	PreferredGivenName  OptString    `json:"preferred_given_name"`
+	PreferredFamilyName OptString    `json:"preferred_family_name"`
+	HonorificPrefix     OptString    `json:"honorific_prefix"`
+	Email               OptString    `json:"email"`
+	Roles               []string     `json:"roles"`
+	Identifiers         []Identifier `json:"identifiers"`
 }
 
 // GetActive returns the value of Active.
@@ -188,7 +217,7 @@ func (s *Person) GetRoles() []string {
 }
 
 // GetIdentifiers returns the value of Identifiers.
-func (s *Person) GetIdentifiers() PersonIdentifiers {
+func (s *Person) GetIdentifiers() []Identifier {
 	return s.Identifiers
 }
 
@@ -243,17 +272,6 @@ func (s *Person) SetRoles(val []string) {
 }
 
 // SetIdentifiers sets the value of Identifiers.
-func (s *Person) SetIdentifiers(val PersonIdentifiers) {
+func (s *Person) SetIdentifiers(val []Identifier) {
 	s.Identifiers = val
-}
-
-type PersonIdentifiers map[string][]string
-
-func (s *PersonIdentifiers) init() PersonIdentifiers {
-	m := *s
-	if m == nil {
-		m = map[string][]string{}
-		*s = m
-	}
-	return m
 }

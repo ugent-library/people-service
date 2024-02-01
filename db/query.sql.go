@@ -155,19 +155,51 @@ func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIden
 	return i, err
 }
 
-const movePersonIdentifier = `-- name: MovePersonIdentifier :exec
+const getPersonIdentifiers = `-- name: GetPersonIdentifiers :many
+SELECT i1.person_id, i1.type, i1.value
+FROM people_identifiers i1
+LEFT JOIN people_identifiers i2 ON i1.person_id = i2.person_id
+WHERE i2.type = $1 AND i2.value = $2
+`
+
+type GetPersonIdentifiersParams struct {
+	Type  string
+	Value string
+}
+
+func (q *Queries) GetPersonIdentifiers(ctx context.Context, arg GetPersonIdentifiersParams) ([]PeopleIdentifier, error) {
+	rows, err := q.db.Query(ctx, getPersonIdentifiers, arg.Type, arg.Value)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PeopleIdentifier
+	for rows.Next() {
+		var i PeopleIdentifier
+		if err := rows.Scan(&i.PersonID, &i.Type, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const transferPersonIdentifier = `-- name: TransferPersonIdentifier :exec
 UPDATE people_identifiers SET person_id = ($3)
 WHERE type = $1 AND value = $2
 `
 
-type MovePersonIdentifierParams struct {
+type TransferPersonIdentifierParams struct {
 	Type     string
 	Value    string
 	PersonID int64
 }
 
-func (q *Queries) MovePersonIdentifier(ctx context.Context, arg MovePersonIdentifierParams) error {
-	_, err := q.db.Exec(ctx, movePersonIdentifier, arg.Type, arg.Value, arg.PersonID)
+func (q *Queries) TransferPersonIdentifier(ctx context.Context, arg TransferPersonIdentifierParams) error {
+	_, err := q.db.Exec(ctx, transferPersonIdentifier, arg.Type, arg.Value, arg.PersonID)
 	return err
 }
 
@@ -183,7 +215,7 @@ UPDATE people SET (
   honorific_prefix,
   email,
   updated_at
-) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
 WHERE id = $1
 `
 
@@ -198,7 +230,6 @@ type UpdatePersonParams struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
-	UpdatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) error {
@@ -213,7 +244,6 @@ func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) erro
 		arg.PreferredFamilyName,
 		arg.HonorificPrefix,
 		arg.Email,
-		arg.UpdatedAt,
 	)
 	return err
 }

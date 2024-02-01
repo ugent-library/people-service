@@ -15,7 +15,7 @@ CREATE TABLE people (
 );
 
 CREATE TABLE people_identifiers (
-  person_id BIGINT REFERENCES people ON DELETE CASCADE,
+  person_id BIGINT NOT NULL REFERENCES people ON DELETE CASCADE,
   type TEXT CHECK (type <> ''),
   value TEXT CHECK (value <> ''),
   PRIMARY KEY (type, value)

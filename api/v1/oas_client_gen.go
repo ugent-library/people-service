@@ -28,7 +28,7 @@ type Invoker interface {
 	// Upsert a single person.
 	//
 	// POST /add-person
-	AddPerson(ctx context.Context, request *Person) (*Person, error)
+	AddPerson(ctx context.Context, request *Person) error
 }
 
 // Client implements OAS client.
@@ -90,12 +90,12 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 // Upsert a single person.
 //
 // POST /add-person
-func (c *Client) AddPerson(ctx context.Context, request *Person) (*Person, error) {
-	res, err := c.sendAddPerson(ctx, request)
-	return res, err
+func (c *Client) AddPerson(ctx context.Context, request *Person) error {
+	_, err := c.sendAddPerson(ctx, request)
+	return err
 }
 
-func (c *Client) sendAddPerson(ctx context.Context, request *Person) (res *Person, err error) {
+func (c *Client) sendAddPerson(ctx context.Context, request *Person) (res *AddPersonOK, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("AddPerson"),
 		semconv.HTTPMethodKey.String("POST"),

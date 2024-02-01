@@ -27,18 +27,20 @@ func (s *Service) NewError(ctx context.Context, err error) *ErrorStatusCode {
 	}
 }
 
-func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
-	if err := s.repo.AddPerson(ctx, toPerson(p)); err != nil {
-		return nil, err
-	}
-	return p, nil
+func (s *Service) AddPerson(ctx context.Context, p *Person) error {
+	return s.repo.AddPerson(ctx, toPerson(p))
 }
 
 func toPerson(p *Person) *models.Person {
+	identifiers := make([]models.PersonIdentifier, len(p.Identifiers))
+	for i, id := range p.Identifiers {
+		identifiers[i] = models.PersonIdentifier(id)
+	}
+
 	return &models.Person{
 		Active:              p.Active,
 		Roles:               p.Roles,
-		Identifiers:         p.Identifiers,
+		Identifiers:         identifiers,
 		Name:                p.Name,
 		PreferredName:       p.PreferredName.Value,
 		GivenName:           p.GivenName.Value,

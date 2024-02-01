@@ -35,12 +35,18 @@ UPDATE people SET (
   honorific_prefix,
   email,
   updated_at
-) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
 WHERE id = $1;
 
 -- name: DeletePerson :exec
 DELETE FROM people
 WHERE id = $1;
+
+-- name: GetPersonIdentifiers :many
+SELECT i1.*
+FROM people_identifiers i1
+LEFT JOIN people_identifiers i2 ON i1.person_id = i2.person_id
+WHERE i2.type = $1 AND i2.value = $2;
 
 -- name: CreatePersonIdentifier :exec
 INSERT INTO people_identifiers (
@@ -49,7 +55,7 @@ INSERT INTO people_identifiers (
   value
 ) VALUES ($1, $2, $3);
 
--- name: MovePersonIdentifier :exec
+-- name: TransferPersonIdentifier :exec
 UPDATE people_identifiers SET person_id = ($3)
 WHERE type = $1 AND value = $2;
 
