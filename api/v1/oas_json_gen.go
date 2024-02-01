@@ -421,12 +421,6 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 		e.Str(s.Name)
 	}
 	{
-		if s.PreferredName.Set {
-			e.FieldStart("preferred_name")
-			s.PreferredName.Encode(e)
-		}
-	}
-	{
 		if s.GivenName.Set {
 			e.FieldStart("given_name")
 			s.GivenName.Encode(e)
@@ -436,18 +430,6 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 		if s.FamilyName.Set {
 			e.FieldStart("family_name")
 			s.FamilyName.Encode(e)
-		}
-	}
-	{
-		if s.PreferredGivenName.Set {
-			e.FieldStart("preferred_given_name")
-			s.PreferredGivenName.Encode(e)
-		}
-	}
-	{
-		if s.PreferredFamilyName.Set {
-			e.FieldStart("preferred_family_name")
-			s.PreferredFamilyName.Encode(e)
 		}
 	}
 	{
@@ -482,18 +464,15 @@ func (s *Person) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPerson = [11]string{
-	0:  "active",
-	1:  "name",
-	2:  "preferred_name",
-	3:  "given_name",
-	4:  "family_name",
-	5:  "preferred_given_name",
-	6:  "preferred_family_name",
-	7:  "honorific_prefix",
-	8:  "email",
-	9:  "attributes",
-	10: "identifiers",
+var jsonFieldsNameOfPerson = [8]string{
+	0: "active",
+	1: "name",
+	2: "given_name",
+	3: "family_name",
+	4: "honorific_prefix",
+	5: "email",
+	6: "attributes",
+	7: "identifiers",
 }
 
 // Decode decodes Person from json.
@@ -501,7 +480,7 @@ func (s *Person) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode Person to nil")
 	}
-	var requiredBitSet [2]uint8
+	var requiredBitSet [1]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -529,16 +508,6 @@ func (s *Person) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
-		case "preferred_name":
-			if err := func() error {
-				s.PreferredName.Reset()
-				if err := s.PreferredName.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"preferred_name\"")
-			}
 		case "given_name":
 			if err := func() error {
 				s.GivenName.Reset()
@@ -558,26 +527,6 @@ func (s *Person) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"family_name\"")
-			}
-		case "preferred_given_name":
-			if err := func() error {
-				s.PreferredGivenName.Reset()
-				if err := s.PreferredGivenName.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"preferred_given_name\"")
-			}
-		case "preferred_family_name":
-			if err := func() error {
-				s.PreferredFamilyName.Reset()
-				if err := s.PreferredFamilyName.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"preferred_family_name\"")
 			}
 		case "honorific_prefix":
 			if err := func() error {
@@ -617,7 +566,7 @@ func (s *Person) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"attributes\"")
 			}
 		case "identifiers":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				s.Identifiers = make([]Identifier, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -643,9 +592,8 @@ func (s *Person) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [2]uint8{
-		0b00000011,
-		0b00000100,
+	for i, mask := range [1]uint8{
+		0b10000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

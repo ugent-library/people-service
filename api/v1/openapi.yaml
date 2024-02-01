@@ -64,19 +64,10 @@ components:
         name:
           type: string
           minLength: 1
-        preferred_name:
-          type: string
-          minLength: 1
         given_name:
           type: string
           minLength: 1
         family_name:
-          type: string
-          minLength: 1
-        preferred_given_name:
-          type: string
-          minLength: 1
-        preferred_family_name:
           type: string
           minLength: 1
         honorific_prefix:

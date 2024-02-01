@@ -42,16 +42,13 @@ func toPerson(p *Person) *models.Person {
 	}
 
 	return &models.Person{
-		Active:              p.Active,
-		Name:                p.Name,
-		PreferredName:       p.PreferredName.Value,
-		GivenName:           p.GivenName.Value,
-		PreferredGivenName:  p.PreferredName.Value,
-		FamilyName:          p.FamilyName.Value,
-		PreferredFamilyName: p.PreferredFamilyName.Value,
-		HonorificPrefix:     p.HonorificPrefix.Value,
-		Email:               p.Email.Value,
-		Attributes:          attributes,
-		Identifiers:         identifiers,
+		Active:          p.Active,
+		Name:            p.Name,
+		GivenName:       p.GivenName.Value,
+		FamilyName:      p.FamilyName.Value,
+		HonorificPrefix: p.HonorificPrefix.Value,
+		Email:           p.Email.Value,
+		Attributes:      attributes,
+		Identifiers:     identifiers,
 	}
 }

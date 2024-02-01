@@ -103,43 +103,20 @@ func (q *Queries) DeletePersonIdentifier(ctx context.Context, arg DeletePersonId
 	return err
 }
 
-const getPersonByIdentifier = `-- name: GetPersonByIdentifier :one
-WITH identifiers AS (
-  SELECT i1.person_id, i1.type, i1.value
-  FROM people_identifiers i1
-  LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
-  WHERE i2.type = $1 AND i2.value = $2	
-)
-SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.attributes, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
-FROM people p, identifiers i WHERE p.id = i.person_id
-GROUP BY p.id
+const getPerson = `-- name: GetPerson :one
+SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.attributes, p.created_at, p.updated_at
+FROM people p, people_identifiers pi
+WHERE p.id = pi.person_id AND pi.type = $1 AND pi.value = $2
 `
 
-type GetPersonByIdentifierParams struct {
+type GetPersonParams struct {
 	Type  string
 	Value string
 }
 
-type GetPersonByIdentifierRow struct {
-	ID                  int64
-	Active              bool
-	Name                string
-	PreferredName       pgtype.Text
-	GivenName           pgtype.Text
-	FamilyName          pgtype.Text
-	PreferredGivenName  pgtype.Text
-	PreferredFamilyName pgtype.Text
-	HonorificPrefix     pgtype.Text
-	Email               pgtype.Text
-	Attributes          []models.Attribute
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	Identifiers         []byte
-}
-
-func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIdentifierParams) (GetPersonByIdentifierRow, error) {
-	row := q.db.QueryRow(ctx, getPersonByIdentifier, arg.Type, arg.Value)
-	var i GetPersonByIdentifierRow
+func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (Person, error) {
+	row := q.db.QueryRow(ctx, getPerson, arg.Type, arg.Value)
+	var i Person
 	err := row.Scan(
 		&i.ID,
 		&i.Active,
@@ -154,25 +131,18 @@ func (q *Queries) GetPersonByIdentifier(ctx context.Context, arg GetPersonByIden
 		&i.Attributes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Identifiers,
 	)
 	return i, err
 }
 
 const getPersonIdentifiers = `-- name: GetPersonIdentifiers :many
-SELECT i1.person_id, i1.type, i1.value
-FROM people_identifiers i1
-LEFT JOIN people_identifiers i2 ON i1.person_id = i2.person_id
-WHERE i2.type = $1 AND i2.value = $2
+SELECT person_id, type, value
+FROM people_identifiers
+WHERE person_id = $1
 `
 
-type GetPersonIdentifiersParams struct {
-	Type  string
-	Value string
-}
-
-func (q *Queries) GetPersonIdentifiers(ctx context.Context, arg GetPersonIdentifiersParams) ([]PeopleIdentifier, error) {
-	rows, err := q.db.Query(ctx, getPersonIdentifiers, arg.Type, arg.Value)
+func (q *Queries) GetPersonIdentifiers(ctx context.Context, personID int64) ([]PeopleIdentifier, error) {
+	rows, err := q.db.Query(ctx, getPersonIdentifiers, personID)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +188,9 @@ UPDATE people SET (
   preferred_family_name,
   honorific_prefix,
   email,
+  attributes,
   updated_at
-) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
 WHERE id = $1
 `
 
@@ -234,6 +205,7 @@ type UpdatePersonParams struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Attributes          []models.Attribute
 }
 
 func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) error {
@@ -248,6 +220,7 @@ func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) erro
 		arg.PreferredFamilyName,
 		arg.HonorificPrefix,
 		arg.Email,
+		arg.Attributes,
 	)
 	return err
 }

@@ -48,25 +48,34 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	queries := r.queries.WithTx(tx)
 
-	// gather existing related identifiers and people
-
+	// gather existing related people and identifiers
+	var existingPeople []db.Person
 	var existingIdentifiers []db.PeopleIdentifier
-	var existingPeople []int64
 
 	for _, id := range p.Identifiers {
-		recs, err := queries.GetPersonIdentifiers(ctx, db.GetPersonIdentifiersParams(id))
+		person, err := queries.GetPerson(ctx, db.GetPersonParams(id))
 		if err != nil && err != pgx.ErrNoRows {
 			return err
 		}
-		for _, rec := range recs {
-			if !slices.Contains(existingIdentifiers, rec) {
-				existingIdentifiers = append(existingIdentifiers, rec)
+		if err == pgx.ErrNoRows {
+			continue
+		}
+		if !slices.ContainsFunc(existingPeople, func(p db.Person) bool { return p.ID == person.ID }) {
+			identifiers, err := queries.GetPersonIdentifiers(ctx, person.ID)
+			if err != nil {
+				return err
 			}
-			if !slices.Contains(existingPeople, rec.PersonID) {
-				existingPeople = append(existingPeople, rec.PersonID)
-			}
+			existingPeople = append(existingPeople, person)
+			existingIdentifiers = append(existingIdentifiers, identifiers...)
 		}
 	}
+
+	slices.SortFunc(existingPeople, func(a, b db.Person) int {
+		if a.UpdatedAt.Time.Before(b.UpdatedAt.Time) {
+			return 1
+		}
+		return -1
+	})
 
 	// create
 
@@ -112,7 +121,13 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	// or update and merge if necessary
 
-	personID := existingPeople[0]
+	personID := existingPeople[0].ID
+
+	attributes := p.Attributes
+
+	// TODO merge attributes with non conflicting scopes
+	// for _, person := range existingPeople {
+	// }
 
 	err = queries.UpdatePerson(ctx, db.UpdatePersonParams{
 		ID:                  personID,
@@ -125,6 +140,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 		PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
 		HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 		Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
+		Attributes:          attributes,
 	})
 	if err != nil {
 		return err
@@ -153,9 +169,9 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	}
 
-	for _, id := range existingPeople {
-		if id != personID {
-			if err = queries.DeletePerson(ctx, id); err != nil {
+	for _, person := range existingPeople {
+		if person.ID != personID {
+			if err = queries.DeletePerson(ctx, person.ID); err != nil {
 				return err
 			}
 		}
