@@ -126,8 +126,8 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 	attributes := p.Attributes
 
 	// TODO merge attributes with non conflicting scopes
-	// for _, person := range existingPeople {
-	// }
+
+	// TODO merge preferred names
 
 	err = queries.UpdatePerson(ctx, db.UpdatePersonParams{
 		ID:                  personID,
