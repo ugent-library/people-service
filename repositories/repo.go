@@ -81,16 +81,13 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	if len(existingPeople) == 0 {
 		personID, err := queries.CreatePerson(ctx, db.CreatePersonParams{
-			Active:              p.Active,
-			Name:                p.Name,
-			PreferredName:       pgtype.Text{Valid: p.PreferredName != "", String: p.PreferredName},
-			GivenName:           pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
-			FamilyName:          pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
-			PreferredGivenName:  pgtype.Text{Valid: p.PreferredGivenName != "", String: p.PreferredGivenName},
-			PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
-			HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
-			Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
-			Attributes:          p.Attributes,
+			Active:          p.Active,
+			Name:            p.Name,
+			GivenName:       pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
+			FamilyName:      pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
+			HonorificPrefix: pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
+			Email:           pgtype.Text{Valid: p.Email != "", String: p.Email},
+			Attributes:      p.Attributes,
 		})
 		if err != nil {
 			return err
@@ -123,24 +120,51 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	personID := existingPeople[0].ID
 
-	attrs := p.Attributes
+	// merge preferred names, new to old
+	var preferredName pgtype.Text
+	var preferredFamilyName pgtype.Text
+	var preferredGivenName pgtype.Text
 
-	// TODO merge attributes with non conflicting scopes
+	for _, rec := range existingPeople {
+		if rec.PreferredName.String != "" || rec.PreferredGivenName.String != "" || rec.PreferredFamilyName.String != "" {
+			preferredName = rec.PreferredName
+			preferredFamilyName = rec.PreferredFamilyName
+			preferredGivenName = rec.PreferredGivenName
+			break
+		}
+	}
 
-	// TODO merge preferred names
+	// merge attributes with non overlapping scopes, new to old
+	var attributes []models.Attribute
+
+	if len(p.Attributes) > 0 {
+		attributes = append(attributes, p.Attributes...)
+	}
+
+	for _, rec := range existingPeople {
+		var attrs []models.Attribute
+		for _, attr := range rec.Attributes {
+			if !slices.ContainsFunc(attributes, func(a models.Attribute) bool { return a.Scope == attr.Scope }) {
+				attrs = append(attrs, attr)
+			}
+		}
+		if len(attrs) > 0 {
+			attributes = append(attributes, attrs...)
+		}
+	}
 
 	err = queries.UpdatePerson(ctx, db.UpdatePersonParams{
 		ID:                  personID,
 		Active:              p.Active,
 		Name:                p.Name,
-		PreferredName:       pgtype.Text{Valid: p.PreferredName != "", String: p.PreferredName},
+		PreferredName:       preferredName,
 		GivenName:           pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
 		FamilyName:          pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
-		PreferredGivenName:  pgtype.Text{Valid: p.PreferredGivenName != "", String: p.PreferredGivenName},
-		PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
+		PreferredGivenName:  preferredGivenName,
+		PreferredFamilyName: preferredFamilyName,
 		HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 		Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
-		Attributes:          attrs,
+		Attributes:          attributes,
 	})
 	if err != nil {
 		return err
@@ -166,12 +190,11 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 				return err
 			}
 		}
-
 	}
 
-	for _, person := range existingPeople {
-		if person.ID != personID {
-			if err = queries.DeletePerson(ctx, person.ID); err != nil {
+	for _, rec := range existingPeople {
+		if rec.ID != personID {
+			if err = queries.DeletePerson(ctx, rec.ID); err != nil {
 				return err
 			}
 		}
