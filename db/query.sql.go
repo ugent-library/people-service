@@ -14,7 +14,6 @@ import (
 
 const createPerson = `-- name: CreatePerson :one
 INSERT INTO people (
-  active,
   name,
   preferred_name,
   given_name,
@@ -23,13 +22,14 @@ INSERT INTO people (
   preferred_family_name,
   honorific_prefix,
   email,
+  active,
+  username,
   attributes
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id
 `
 
 type CreatePersonParams struct {
-	Active              bool
 	Name                string
 	PreferredName       pgtype.Text
 	GivenName           pgtype.Text
@@ -38,12 +38,13 @@ type CreatePersonParams struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Active              bool
+	Username            pgtype.Text
 	Attributes          []models.Attribute
 }
 
 func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createPerson,
-		arg.Active,
 		arg.Name,
 		arg.PreferredName,
 		arg.GivenName,
@@ -52,6 +53,8 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int
 		arg.PreferredFamilyName,
 		arg.HonorificPrefix,
 		arg.Email,
+		arg.Active,
+		arg.Username,
 		arg.Attributes,
 	)
 	var id int64
@@ -104,7 +107,7 @@ func (q *Queries) DeletePersonIdentifier(ctx context.Context, arg DeletePersonId
 }
 
 const getPerson = `-- name: GetPerson :one
-SELECT p.id, p.active, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.attributes, p.created_at, p.updated_at
+SELECT p.id, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.active, p.username, p.attributes, p.created_at, p.updated_at
 FROM people p, people_identifiers pi
 WHERE p.id = pi.person_id AND pi.type = $1 AND pi.value = $2
 `
@@ -119,7 +122,6 @@ func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (Person, e
 	var i Person
 	err := row.Scan(
 		&i.ID,
-		&i.Active,
 		&i.Name,
 		&i.PreferredName,
 		&i.GivenName,
@@ -128,6 +130,8 @@ func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (Person, e
 		&i.PreferredFamilyName,
 		&i.HonorificPrefix,
 		&i.Email,
+		&i.Active,
+		&i.Username,
 		&i.Attributes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -179,7 +183,6 @@ func (q *Queries) TransferPersonIdentifier(ctx context.Context, arg TransferPers
 
 const updatePerson = `-- name: UpdatePerson :exec
 UPDATE people SET (
-  active,
   name,
   preferred_name,
   given_name,
@@ -188,15 +191,16 @@ UPDATE people SET (
   preferred_family_name,
   honorific_prefix,
   email,
+  active,
+  username,
   attributes,
   updated_at
-) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
 WHERE id = $1
 `
 
 type UpdatePersonParams struct {
 	ID                  int64
-	Active              bool
 	Name                string
 	PreferredName       pgtype.Text
 	GivenName           pgtype.Text
@@ -205,13 +209,14 @@ type UpdatePersonParams struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Active              bool
+	Username            pgtype.Text
 	Attributes          []models.Attribute
 }
 
 func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) error {
 	_, err := q.db.Exec(ctx, updatePerson,
 		arg.ID,
-		arg.Active,
 		arg.Name,
 		arg.PreferredName,
 		arg.GivenName,
@@ -220,6 +225,8 @@ func (q *Queries) UpdatePerson(ctx context.Context, arg UpdatePersonParams) erro
 		arg.PreferredFamilyName,
 		arg.HonorificPrefix,
 		arg.Email,
+		arg.Active,
+		arg.Username,
 		arg.Attributes,
 	)
 	return err

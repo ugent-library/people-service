@@ -5,7 +5,6 @@ WHERE p.id = pi.person_id AND pi.type = $1 AND pi.value = $2;
 
 -- name: CreatePerson :one
 INSERT INTO people (
-  active,
   name,
   preferred_name,
   given_name,
@@ -14,13 +13,14 @@ INSERT INTO people (
   preferred_family_name,
   honorific_prefix,
   email,
+  active,
+  username,
   attributes
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id;
 
 -- name: UpdatePerson :exec
 UPDATE people SET (
-  active,
   name,
   preferred_name,
   given_name,
@@ -29,9 +29,11 @@ UPDATE people SET (
   preferred_family_name,
   honorific_prefix,
   email,
+  active,
+  username,
   attributes,
   updated_at
-) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
 WHERE id = $1;
 
 -- name: DeletePerson :exec

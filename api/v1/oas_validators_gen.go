@@ -176,7 +176,7 @@ func (s *Person) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "given_name",
+			Name:  "givenName",
 			Error: err,
 		})
 	}
@@ -202,7 +202,7 @@ func (s *Person) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "family_name",
+			Name:  "familyName",
 			Error: err,
 		})
 	}
@@ -228,7 +228,7 @@ func (s *Person) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "honorific_prefix",
+			Name:  "honorificPrefix",
 			Error: err,
 		})
 	}
@@ -255,6 +255,32 @@ func (s *Person) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "email",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.Username.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "username",
 			Error: err,
 		})
 	}

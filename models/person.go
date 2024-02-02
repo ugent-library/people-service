@@ -3,7 +3,6 @@ package models
 import "time"
 
 type Person struct {
-	Active              bool         `json:"active"`
 	Name                string       `json:"name,omitempty"`
 	PreferredName       string       `json:"preferred_name,omitempty"`
 	GivenName           string       `json:"given_name,omitempty"`
@@ -12,6 +11,8 @@ type Person struct {
 	PreferredFamilyName string       `json:"preferred_family_name,omitempty"`
 	HonorificPrefix     string       `json:"honorific_prefix,omitempty"`
 	Email               string       `json:"email,omitempty"`
+	Active              bool         `json:"active"`
+	Username            string       `json:"username,omitempty"`
 	Attributes          []Attribute  `json:"attributes,omitempty"`
 	Identifiers         []Identifier `json:"identifiers,omitempty"`
 }

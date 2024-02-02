@@ -81,12 +81,13 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	if len(existingPeople) == 0 {
 		personID, err := queries.CreatePerson(ctx, db.CreatePersonParams{
-			Active:          p.Active,
 			Name:            p.Name,
 			GivenName:       pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
 			FamilyName:      pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
 			HonorificPrefix: pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 			Email:           pgtype.Text{Valid: p.Email != "", String: p.Email},
+			Active:          p.Active,
+			Username:        pgtype.Text{Valid: p.Username != "", String: p.Username},
 			Attributes:      p.Attributes,
 		})
 		if err != nil {
@@ -155,7 +156,6 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	err = queries.UpdatePerson(ctx, db.UpdatePersonParams{
 		ID:                  personID,
-		Active:              p.Active,
 		Name:                p.Name,
 		PreferredName:       preferredName,
 		GivenName:           pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
@@ -164,6 +164,8 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 		PreferredFamilyName: preferredFamilyName,
 		HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
 		Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
+		Active:              p.Active,
+		Username:            pgtype.Text{Valid: p.Username != "", String: p.Username},
 		Attributes:          attributes,
 	})
 	if err != nil {

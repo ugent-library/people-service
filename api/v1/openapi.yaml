@@ -59,23 +59,26 @@ components:
     Person:
       type: object
       properties:
-        active:
-          type: boolean
         name:
           type: string
           minLength: 1
-        given_name:
+        givenName:
           type: string
           minLength: 1
-        family_name:
+        familyName:
           type: string
           minLength: 1
-        honorific_prefix:
+        honorificPrefix:
           type: string
           minLength: 1
         email:
           type: string
           minLength: 1
+        username:
+          type: string
+          minLength: 1
+        active:
+          type: boolean
         attributes:
           type: array
           items:
@@ -85,7 +88,7 @@ components:
           items:
             $ref: "#/components/schemas/Identifier"
           minItems: 1
-      required: [active, name, identifiers]
+      required: [name, identifiers]
 
     Attribute:
       type: object

@@ -17,7 +17,6 @@ type PeopleIdentifier struct {
 
 type Person struct {
 	ID                  int64
-	Active              bool
 	Name                string
 	PreferredName       pgtype.Text
 	GivenName           pgtype.Text
@@ -26,6 +25,8 @@ type Person struct {
 	PreferredFamilyName pgtype.Text
 	HonorificPrefix     pgtype.Text
 	Email               pgtype.Text
+	Active              bool
+	Username            pgtype.Text
 	Attributes          []models.Attribute
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
