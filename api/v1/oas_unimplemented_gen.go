@@ -13,13 +13,22 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
-// AddPerson implements AddPerson operation.
+// AddPerson implements addPerson operation.
 //
-// Upsert a single person.
+// Upsert a person.
 //
 // POST /add-person
 func (UnimplementedHandler) AddPerson(ctx context.Context, req *Person) error {
 	return ht.ErrNotImplemented
+}
+
+// GetPerson implements getPerson operation.
+//
+// Get a person.
+//
+// POST /get-person
+func (UnimplementedHandler) GetPerson(ctx context.Context, req *Identifier) (r GetPersonRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // NewError creates *ErrorStatusCode from error returned by handler.

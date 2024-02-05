@@ -116,6 +116,8 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ErrorStatusCode) getPersonRes() {}
+
 // Ref: #/components/schemas/Identifier
 type Identifier struct {
 	Type  string `json:"type"`
@@ -369,3 +371,141 @@ func (s *Person) SetAttributes(val []Attribute) {
 func (s *Person) SetIdentifiers(val []Identifier) {
 	s.Identifiers = val
 }
+
+// Ref: #/components/schemas/PersonRecord
+type PersonRecord struct {
+	Name                string       `json:"name"`
+	PreferredName       OptString    `json:"preferredName"`
+	GivenName           OptString    `json:"givenName"`
+	PreferredGivenName  OptString    `json:"preferredGivenName"`
+	FamilyName          OptString    `json:"familyName"`
+	PreferredFamilyName OptString    `json:"preferredFamilyName"`
+	HonorificPrefix     OptString    `json:"honorificPrefix"`
+	Email               OptString    `json:"email"`
+	Username            OptString    `json:"username"`
+	Active              OptBool      `json:"active"`
+	Attributes          []Attribute  `json:"attributes"`
+	Identifiers         []Identifier `json:"identifiers"`
+}
+
+// GetName returns the value of Name.
+func (s *PersonRecord) GetName() string {
+	return s.Name
+}
+
+// GetPreferredName returns the value of PreferredName.
+func (s *PersonRecord) GetPreferredName() OptString {
+	return s.PreferredName
+}
+
+// GetGivenName returns the value of GivenName.
+func (s *PersonRecord) GetGivenName() OptString {
+	return s.GivenName
+}
+
+// GetPreferredGivenName returns the value of PreferredGivenName.
+func (s *PersonRecord) GetPreferredGivenName() OptString {
+	return s.PreferredGivenName
+}
+
+// GetFamilyName returns the value of FamilyName.
+func (s *PersonRecord) GetFamilyName() OptString {
+	return s.FamilyName
+}
+
+// GetPreferredFamilyName returns the value of PreferredFamilyName.
+func (s *PersonRecord) GetPreferredFamilyName() OptString {
+	return s.PreferredFamilyName
+}
+
+// GetHonorificPrefix returns the value of HonorificPrefix.
+func (s *PersonRecord) GetHonorificPrefix() OptString {
+	return s.HonorificPrefix
+}
+
+// GetEmail returns the value of Email.
+func (s *PersonRecord) GetEmail() OptString {
+	return s.Email
+}
+
+// GetUsername returns the value of Username.
+func (s *PersonRecord) GetUsername() OptString {
+	return s.Username
+}
+
+// GetActive returns the value of Active.
+func (s *PersonRecord) GetActive() OptBool {
+	return s.Active
+}
+
+// GetAttributes returns the value of Attributes.
+func (s *PersonRecord) GetAttributes() []Attribute {
+	return s.Attributes
+}
+
+// GetIdentifiers returns the value of Identifiers.
+func (s *PersonRecord) GetIdentifiers() []Identifier {
+	return s.Identifiers
+}
+
+// SetName sets the value of Name.
+func (s *PersonRecord) SetName(val string) {
+	s.Name = val
+}
+
+// SetPreferredName sets the value of PreferredName.
+func (s *PersonRecord) SetPreferredName(val OptString) {
+	s.PreferredName = val
+}
+
+// SetGivenName sets the value of GivenName.
+func (s *PersonRecord) SetGivenName(val OptString) {
+	s.GivenName = val
+}
+
+// SetPreferredGivenName sets the value of PreferredGivenName.
+func (s *PersonRecord) SetPreferredGivenName(val OptString) {
+	s.PreferredGivenName = val
+}
+
+// SetFamilyName sets the value of FamilyName.
+func (s *PersonRecord) SetFamilyName(val OptString) {
+	s.FamilyName = val
+}
+
+// SetPreferredFamilyName sets the value of PreferredFamilyName.
+func (s *PersonRecord) SetPreferredFamilyName(val OptString) {
+	s.PreferredFamilyName = val
+}
+
+// SetHonorificPrefix sets the value of HonorificPrefix.
+func (s *PersonRecord) SetHonorificPrefix(val OptString) {
+	s.HonorificPrefix = val
+}
+
+// SetEmail sets the value of Email.
+func (s *PersonRecord) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetUsername sets the value of Username.
+func (s *PersonRecord) SetUsername(val OptString) {
+	s.Username = val
+}
+
+// SetActive sets the value of Active.
+func (s *PersonRecord) SetActive(val OptBool) {
+	s.Active = val
+}
+
+// SetAttributes sets the value of Attributes.
+func (s *PersonRecord) SetAttributes(val []Attribute) {
+	s.Attributes = val
+}
+
+// SetIdentifiers sets the value of Identifiers.
+func (s *PersonRecord) SetIdentifiers(val []Identifier) {
+	s.Identifiers = val
+}
+
+func (*PersonRecord) getPersonRes() {}

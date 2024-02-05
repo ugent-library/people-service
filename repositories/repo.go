@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/google/uuid"
@@ -12,7 +13,13 @@ import (
 	"github.com/ugent-library/people-service/models"
 )
 
-const PersonIdentifierType = "person"
+const (
+	PersonIdentifierType = "person"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
+)
 
 type Repo struct {
 	config  Config
@@ -37,6 +44,54 @@ func New(c Config) (*Repo, error) {
 		db:      pool,
 		queries: db.New(pool),
 	}, nil
+}
+
+func (r *Repo) GetPerson(ctx context.Context, id models.Identifier) (*models.PersonRecord, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	queries := r.queries.WithTx(tx)
+
+	person, err := queries.GetPerson(ctx, db.GetPersonParams(id))
+	if err == pgx.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := queries.GetPersonIdentifiers(ctx, person.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	p := &models.PersonRecord{
+		Person: models.Person{
+			Name:                person.Name,
+			PreferredName:       person.PreferredName.String,
+			GivenName:           person.GivenName.String,
+			PreferredGivenName:  person.PreferredGivenName.String,
+			FamilyName:          person.FamilyName.String,
+			PreferredFamilyName: person.PreferredFamilyName.String,
+			HonorificPrefix:     person.HonorificPrefix.String,
+			Email:               person.Email.String,
+			Username:            person.Username.String,
+			Active:              person.Active,
+			Identifiers:         make([]models.Identifier, len(ids)),
+			Attributes:          person.Attributes,
+		},
+		CreatedAt: person.CreatedAt.Time,
+		UpdatedAt: person.UpdatedAt.Time,
+	}
+
+	for i, id := range ids {
+		p.Person.Identifiers[i] = models.Identifier{Type: id.Type, Value: id.Value}
+	}
+
+	return p, nil
 }
 
 func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {

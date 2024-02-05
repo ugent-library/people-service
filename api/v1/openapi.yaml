@@ -8,11 +8,35 @@ servers:
   - url: /api/v1
 
 paths:
+  "/get-person":
+    post:
+      summary: Get a person
+      description: Get a person
+      operationId: getPerson
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Identifier"
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonRecord"
+        "404":
+          description: Person not found
+          $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
+
   "/add-person":
     post:
-      summary: "Upsert a single person"
-      description: "Upsert a single person"
-      operationId: "AddPerson"
+      summary: Upsert a person
+      description: Upsert a person
+      operationId: addPerson
       requestBody:
         content:
           application/json:
@@ -21,7 +45,7 @@ paths:
         required: true
       responses:
         "200":
-          description: "Added person successfully"
+          description: Success
         default:
           $ref: "#/components/responses/Error"
 
@@ -123,3 +147,15 @@ components:
           type: string
           minLength: 1
       required: [type, value]
+    
+    PersonRecord:
+      allOf:
+        - $ref: "#/components/schemas/Person"
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [createdAt, updatedAt]

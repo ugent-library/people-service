@@ -8,12 +8,18 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
-	// AddPerson implements AddPerson operation.
+	// AddPerson implements addPerson operation.
 	//
-	// Upsert a single person.
+	// Upsert a person.
 	//
 	// POST /add-person
 	AddPerson(ctx context.Context, req *Person) error
+	// GetPerson implements getPerson operation.
+	//
+	// Get a person.
+	//
+	// POST /get-person
+	GetPerson(ctx context.Context, req *Identifier) (GetPersonRes, error)
 	// NewError creates *ErrorStatusCode from error returned by handler.
 	//
 	// Used for common default response.
