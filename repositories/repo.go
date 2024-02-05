@@ -81,14 +81,17 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	if len(existingPeople) == 0 {
 		personID, err := queries.CreatePerson(ctx, db.CreatePersonParams{
-			Name:            p.Name,
-			GivenName:       pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
-			FamilyName:      pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
-			HonorificPrefix: pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
-			Email:           pgtype.Text{Valid: p.Email != "", String: p.Email},
-			Active:          p.Active,
-			Username:        pgtype.Text{Valid: p.Username != "", String: p.Username},
-			Attributes:      p.Attributes,
+			Name:                p.Name,
+			PreferredName:       pgtype.Text{Valid: p.PreferredName != "", String: p.PreferredName},
+			GivenName:           pgtype.Text{Valid: p.GivenName != "", String: p.GivenName},
+			PreferredGivenName:  pgtype.Text{Valid: p.PreferredGivenName != "", String: p.PreferredGivenName},
+			FamilyName:          pgtype.Text{Valid: p.FamilyName != "", String: p.FamilyName},
+			PreferredFamilyName: pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName},
+			HonorificPrefix:     pgtype.Text{Valid: p.HonorificPrefix != "", String: p.HonorificPrefix},
+			Email:               pgtype.Text{Valid: p.Email != "", String: p.Email},
+			Active:              p.Active,
+			Username:            pgtype.Text{Valid: p.Username != "", String: p.Username},
+			Attributes:          p.Attributes,
 		})
 		if err != nil {
 			return err
@@ -121,17 +124,19 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 	personID := existingPeople[0].ID
 
-	// merge preferred names, new to old
-	var preferredName pgtype.Text
-	var preferredFamilyName pgtype.Text
-	var preferredGivenName pgtype.Text
+	preferredName := pgtype.Text{Valid: p.PreferredName != "", String: p.PreferredName}
+	preferredGivenName := pgtype.Text{Valid: p.PreferredGivenName != "", String: p.PreferredGivenName}
+	preferredFamilyName := pgtype.Text{Valid: p.PreferredFamilyName != "", String: p.PreferredFamilyName}
 
-	for _, rec := range existingPeople {
-		if rec.PreferredName.String != "" || rec.PreferredGivenName.String != "" || rec.PreferredFamilyName.String != "" {
-			preferredName = rec.PreferredName
-			preferredFamilyName = rec.PreferredFamilyName
-			preferredGivenName = rec.PreferredGivenName
-			break
+	// merge preferred names if none are given, new to old
+	if !preferredName.Valid && !preferredGivenName.Valid && !preferredFamilyName.Valid {
+		for _, rec := range existingPeople {
+			if rec.PreferredName.String != "" || rec.PreferredGivenName.String != "" || rec.PreferredFamilyName.String != "" {
+				preferredName = rec.PreferredName
+				preferredFamilyName = rec.PreferredFamilyName
+				preferredGivenName = rec.PreferredGivenName
+				break
+			}
 		}
 	}
 

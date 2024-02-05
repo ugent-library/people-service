@@ -62,10 +62,19 @@ components:
         name:
           type: string
           minLength: 1
+        preferredName:
+          type: string
+          minLength: 1
         givenName:
           type: string
           minLength: 1
+        preferredGivenName:
+          type: string
+          minLength: 1
         familyName:
+          type: string
+          minLength: 1
+        preferredFamilyName:
           type: string
           minLength: 1
         honorificPrefix:

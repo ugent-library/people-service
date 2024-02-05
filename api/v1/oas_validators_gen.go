@@ -155,6 +155,32 @@ func (s *Person) Validate() error {
 		})
 	}
 	if err := func() error {
+		if value, ok := s.PreferredName.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "preferredName",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if value, ok := s.GivenName.Get(); ok {
 			if err := func() error {
 				if err := (validate.String{
@@ -181,6 +207,32 @@ func (s *Person) Validate() error {
 		})
 	}
 	if err := func() error {
+		if value, ok := s.PreferredGivenName.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "preferredGivenName",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if value, ok := s.FamilyName.Get(); ok {
 			if err := func() error {
 				if err := (validate.String{
@@ -203,6 +255,32 @@ func (s *Person) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "familyName",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.PreferredFamilyName.Get(); ok {
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(value)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "preferredFamilyName",
 			Error: err,
 		})
 	}

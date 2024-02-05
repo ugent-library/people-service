@@ -236,15 +236,18 @@ func (o OptString) Or(d string) string {
 
 // Ref: #/components/schemas/Person
 type Person struct {
-	Name            string       `json:"name"`
-	GivenName       OptString    `json:"givenName"`
-	FamilyName      OptString    `json:"familyName"`
-	HonorificPrefix OptString    `json:"honorificPrefix"`
-	Email           OptString    `json:"email"`
-	Username        OptString    `json:"username"`
-	Active          OptBool      `json:"active"`
-	Attributes      []Attribute  `json:"attributes"`
-	Identifiers     []Identifier `json:"identifiers"`
+	Name                string       `json:"name"`
+	PreferredName       OptString    `json:"preferredName"`
+	GivenName           OptString    `json:"givenName"`
+	PreferredGivenName  OptString    `json:"preferredGivenName"`
+	FamilyName          OptString    `json:"familyName"`
+	PreferredFamilyName OptString    `json:"preferredFamilyName"`
+	HonorificPrefix     OptString    `json:"honorificPrefix"`
+	Email               OptString    `json:"email"`
+	Username            OptString    `json:"username"`
+	Active              OptBool      `json:"active"`
+	Attributes          []Attribute  `json:"attributes"`
+	Identifiers         []Identifier `json:"identifiers"`
 }
 
 // GetName returns the value of Name.
@@ -252,14 +255,29 @@ func (s *Person) GetName() string {
 	return s.Name
 }
 
+// GetPreferredName returns the value of PreferredName.
+func (s *Person) GetPreferredName() OptString {
+	return s.PreferredName
+}
+
 // GetGivenName returns the value of GivenName.
 func (s *Person) GetGivenName() OptString {
 	return s.GivenName
 }
 
+// GetPreferredGivenName returns the value of PreferredGivenName.
+func (s *Person) GetPreferredGivenName() OptString {
+	return s.PreferredGivenName
+}
+
 // GetFamilyName returns the value of FamilyName.
 func (s *Person) GetFamilyName() OptString {
 	return s.FamilyName
+}
+
+// GetPreferredFamilyName returns the value of PreferredFamilyName.
+func (s *Person) GetPreferredFamilyName() OptString {
+	return s.PreferredFamilyName
 }
 
 // GetHonorificPrefix returns the value of HonorificPrefix.
@@ -297,14 +315,29 @@ func (s *Person) SetName(val string) {
 	s.Name = val
 }
 
+// SetPreferredName sets the value of PreferredName.
+func (s *Person) SetPreferredName(val OptString) {
+	s.PreferredName = val
+}
+
 // SetGivenName sets the value of GivenName.
 func (s *Person) SetGivenName(val OptString) {
 	s.GivenName = val
 }
 
+// SetPreferredGivenName sets the value of PreferredGivenName.
+func (s *Person) SetPreferredGivenName(val OptString) {
+	s.PreferredGivenName = val
+}
+
 // SetFamilyName sets the value of FamilyName.
 func (s *Person) SetFamilyName(val OptString) {
 	s.FamilyName = val
+}
+
+// SetPreferredFamilyName sets the value of PreferredFamilyName.
+func (s *Person) SetPreferredFamilyName(val OptString) {
+	s.PreferredFamilyName = val
 }
 
 // SetHonorificPrefix sets the value of HonorificPrefix.

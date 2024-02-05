@@ -15,9 +15,6 @@ CREATE TABLE people (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- CREATE UNIQUE INDEX "people_email_active_key" ON "people" ("email") WHERE (active=true);
--- CREATE UNIQUE INDEX "people_username_active_key" ON "people" ("username") WHERE (active=true);
-
 CREATE TABLE people_identifiers (
   person_id BIGINT NOT NULL REFERENCES people ON DELETE CASCADE,
   type TEXT CHECK (type <> ''),
