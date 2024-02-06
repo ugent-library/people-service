@@ -22,9 +22,6 @@ var migrateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if versionFlag >= 0 {
-			return db.MigrateTo(ctx, config.Repo.Conn, versionFlag)
-		}
-		return db.Migrate(ctx, config.Repo.Conn)
+		return db.MigrateTo(ctx, config.Repo.Conn, versionFlag)
 	},
 }

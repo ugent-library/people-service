@@ -29,16 +29,7 @@ func newMigrator(ctx context.Context, db *pgx.Conn) (*migrate.Migrator, error) {
 }
 
 func Migrate(ctx context.Context, conn string) error {
-	db, err := pgx.Connect(ctx, conn)
-	if err != nil {
-		return err
-	}
-	defer db.Close(ctx)
-	m, err := newMigrator(ctx, db)
-	if err != nil {
-		return err
-	}
-	return m.Migrate(ctx)
+	return MigrateTo(ctx, conn, -1)
 }
 
 func MigrateTo(ctx context.Context, conn string, version int32) error {
@@ -51,5 +42,8 @@ func MigrateTo(ctx context.Context, conn string, version int32) error {
 	if err != nil {
 		return err
 	}
-	return m.MigrateTo(ctx, version)
+	if version >= 0 {
+		return m.MigrateTo(ctx, version)
+	}
+	return m.Migrate(ctx)
 }
