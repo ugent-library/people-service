@@ -1,6 +1,11 @@
 package cli
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
+
+//go:generate go run github.com/g4s8/envdoc@v0.1.1 --output ../CONFIG.md --all
 
 // Version info
 type Version struct {
@@ -9,14 +14,17 @@ type Version struct {
 	Image  string `env:"IMAGE_NAME"`
 }
 
+// Application configuration
 type Config struct {
 	// Env must be local, development, test or production
 	Env    string `env:"PEOPLE_ENV" envDefault:"production"`
 	Host   string `env:"PEOPLE_HOST"`
 	Port   int    `env:"PEOPLE_PORT" envDefault:"3000"`
 	APIKey string `env:"PEOPLE_API_KEY,notEmpty"`
-	Repo   struct {
-		Conn string `env:"CONN,notEmpty"`
+	// Repository configuration
+	Repo struct {
+		Conn            string        `env:"CONN,notEmpty"`
+		DeactivateAfter time.Duration `env:"DEACTIVATE_AFTER,notEmpty" envDefault:"8h"`
 	} `envPrefix:"PEOPLE_REPO_"`
 }
 

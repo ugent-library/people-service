@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -28,7 +29,8 @@ type Repo struct {
 }
 
 type Config struct {
-	Conn string
+	Conn            string
+	DeactivateAfter time.Duration
 }
 
 func New(c Config) (*Repo, error) {
@@ -46,6 +48,7 @@ func New(c Config) (*Repo, error) {
 	}, nil
 }
 
+// TODO tx needed?
 func (r *Repo) GetPerson(ctx context.Context, id models.Identifier) (*models.PersonRecord, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -91,7 +94,7 @@ func (r *Repo) GetPerson(ctx context.Context, id models.Identifier) (*models.Per
 		p.Person.Identifiers[i] = models.Identifier{Type: id.Type, Value: id.Value}
 	}
 
-	return p, nil
+	return p, tx.Commit(ctx)
 }
 
 func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
@@ -274,4 +277,9 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *Repo) DeactivatePeople(ctx context.Context) error {
+	t := time.Now().Add(-r.config.DeactivateAfter)
+	return r.queries.DeactivatePeople(ctx, pgtype.Timestamptz{Valid: true, Time: t})
 }

@@ -81,6 +81,16 @@ func (q *Queries) CreatePersonIdentifier(ctx context.Context, arg CreatePersonId
 	return err
 }
 
+const deactivatePeople = `-- name: DeactivatePeople :exec
+UPDATE people SET active = FALSE
+WHERE updated_at < $1
+`
+
+func (q *Queries) DeactivatePeople(ctx context.Context, updatedAt pgtype.Timestamptz) error {
+	_, err := q.db.Exec(ctx, deactivatePeople, updatedAt)
+	return err
+}
+
 const deletePerson = `-- name: DeletePerson :exec
 DELETE FROM people
 WHERE id = $1

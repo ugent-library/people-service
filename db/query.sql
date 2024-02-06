@@ -36,6 +36,10 @@ UPDATE people SET (
 ) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
 WHERE id = $1;
 
+-- name: DeactivatePeople :exec
+UPDATE people SET active = FALSE
+WHERE updated_at < $1;
+
 -- name: DeletePerson :exec
 DELETE FROM people
 WHERE id = $1;

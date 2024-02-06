@@ -38,10 +38,12 @@ func (s *apiSecurityHandler) HandleApiKey(ctx context.Context, operationName str
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start the server",
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// setup repo
 		repo, err := repositories.New(repositories.Config{
-			Conn: config.Repo.Conn,
+			Conn:            config.Repo.Conn,
+			DeactivateAfter: config.Repo.DeactivateAfter,
 		})
 		if err != nil {
 			return err
