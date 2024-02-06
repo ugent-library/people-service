@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	PersonIdentifierType = "person"
+	IDType = "id"
 )
 
 var (
@@ -157,7 +157,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 
 		err = queries.CreatePersonIdentifier(ctx, db.CreatePersonIdentifierParams{
 			PersonID: personID,
-			Type:     PersonIdentifierType,
+			Type:     IDType,
 			Value:    uuid.NewString(),
 		})
 		if err != nil {
@@ -236,7 +236,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 	}
 
 	for _, id := range existingIdentifiers {
-		if id.Type == PersonIdentifierType && id.PersonID != personID {
+		if id.Type == IDType && id.PersonID != personID {
 			err = queries.TransferPersonIdentifier(ctx, db.TransferPersonIdentifierParams{
 				PersonID: personID,
 				Type:     id.Type,
@@ -246,7 +246,7 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 				return err
 			}
 		}
-		if id.Type != PersonIdentifierType {
+		if id.Type != IDType {
 			err = queries.DeletePersonIdentifier(ctx, db.DeletePersonIdentifierParams{
 				Type:  id.Type,
 				Value: id.Value,
