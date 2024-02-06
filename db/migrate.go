@@ -3,47 +3,36 @@ package db
 import (
 	"context"
 	"embed"
-	"io/fs"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/tern/v2/migrate"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	_ "github.com/ugent-library/people-service/db/migrations"
 )
 
 //go:embed migrations/*.sql
-var migrationsFS embed.FS
+var embedMigrations embed.FS
 
-func newMigrator(ctx context.Context, db *pgx.Conn) (*migrate.Migrator, error) {
-	migrator, err := migrate.NewMigrator(ctx, db, "schema_version")
-	if err != nil {
-		return nil, err
-	}
-	migrations, err := fs.Sub(migrationsFS, "migrations")
-	if err != nil {
-		return nil, err
-	}
-	if err = migrator.LoadMigrations(migrations); err != nil {
-		return nil, err
-	}
-
-	return migrator, nil
+func init() {
+	goose.SetTableName("schema_version")
+	goose.SetBaseFS(embedMigrations)
 }
 
-func Migrate(ctx context.Context, conn string) error {
-	return MigrateTo(ctx, conn, -1)
-}
-
-func MigrateTo(ctx context.Context, conn string, version int32) error {
-	db, err := pgx.Connect(ctx, conn)
+func MigrateUp(ctx context.Context, conn string) error {
+	db, err := goose.OpenDBWithDriver("pgx", conn)
 	if err != nil {
 		return err
 	}
-	defer db.Close(ctx)
-	m, err := newMigrator(ctx, db)
+	defer db.Close()
+
+	return goose.UpContext(ctx, db, "migrations")
+}
+
+func MigrateDown(ctx context.Context, conn string) error {
+	db, err := goose.OpenDBWithDriver("pgx", conn)
 	if err != nil {
 		return err
 	}
-	if version >= 0 {
-		return m.MigrateTo(ctx, version)
-	}
-	return m.Migrate(ctx)
+	defer db.Close()
+
+	return goose.DownContext(ctx, db, "migrations")
 }

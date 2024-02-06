@@ -1,6 +1,8 @@
 module github.com/ugent-library/people-service
 
-go 1.21.3
+go 1.21.4
+
+toolchain go1.21.6
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
@@ -28,15 +30,19 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.6.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.0.2 // indirect
 	github.com/jackc/pgtype v1.4.0 // indirect
 	github.com/jackc/pgx/v4 v4.7.1 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+	github.com/riverqueue/river/riverdriver v0.0.18 // indirect
+	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/vearutop/statigz v1.4.0 // indirect
@@ -62,6 +68,9 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pressly/goose/v3 v3.18.0
+	github.com/riverqueue/river v0.0.18
+	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.0.18
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/swaggest/swgui v1.8.0

@@ -1,3 +1,5 @@
+-- +goose Up
+
 CREATE TABLE people (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL CHECK (name <> ''),
@@ -26,7 +28,7 @@ CREATE TABLE people_identifiers (
 
 CREATE INDEX people_identifiers_person_id_fkey ON people_identifiers (person_id);
 
----- create above / drop below ----
+-- +goose Down
 
 DROP TABLE people CASCADE;
 DROP TABLE people_identifiers CASCADE;

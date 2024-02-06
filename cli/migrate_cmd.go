@@ -7,8 +7,16 @@ import (
 	"github.com/ugent-library/people-service/db"
 )
 
+var (
+	migrateUpFlag   bool
+	migrateDownFlag bool
+)
+
 func init() {
-	migrateCmd.Flags().Int32("version", -1, "version number to migrate up or down to")
+	migrateCmd.Flags().BoolVar(&migrateUpFlag, "up", false, "migrate up")
+	migrateCmd.Flags().BoolVar(&migrateDownFlag, "down", false, "migrate down")
+	migrateCmd.MarkFlagsOneRequired("up", "down")
+	migrateCmd.MarkFlagsMutuallyExclusive("up", "down")
 	rootCmd.AddCommand(migrateCmd)
 }
 
@@ -17,11 +25,9 @@ var migrateCmd = &cobra.Command{
 	Short: "Run database migrations",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := context.Background()
-		versionFlag, err := cmd.Flags().GetInt32("version")
-		if err != nil {
-			return err
+		if migrateUpFlag {
+			return db.MigrateUp(context.Background(), config.Repo.Conn)
 		}
-		return db.MigrateTo(ctx, config.Repo.Conn, versionFlag)
+		return db.MigrateDown(context.Background(), config.Repo.Conn)
 	},
 }
