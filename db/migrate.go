@@ -13,7 +13,7 @@ import (
 var embedMigrations embed.FS
 
 func init() {
-	goose.SetTableName("schema_version")
+	goose.SetTableName("goose_migration")
 	goose.SetBaseFS(embedMigrations)
 }
 
@@ -23,7 +23,6 @@ func MigrateUp(ctx context.Context, conn string) error {
 		return err
 	}
 	defer db.Close()
-
 	return goose.UpContext(ctx, db, "migrations")
 }
 
@@ -33,6 +32,5 @@ func MigrateDown(ctx context.Context, conn string) error {
 		return err
 	}
 	defer db.Close()
-
-	return goose.DownContext(ctx, db, "migrations")
+	return goose.ResetContext(ctx, db, "migrations")
 }

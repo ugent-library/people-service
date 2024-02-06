@@ -12,7 +12,7 @@ func init() {
 }
 
 var migrateCmd = &cobra.Command{
-	Use:       "migrate",
+	Use:       "migrate [up|down]",
 	Short:     "Run database migrations",
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"up", "down"},
