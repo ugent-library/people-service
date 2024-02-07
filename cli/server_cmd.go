@@ -9,11 +9,15 @@ import (
 	"github.com/alexliesenfeld/health"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/graceful"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/spf13/cobra"
 	"github.com/swaggest/swgui/v5emb"
 	"github.com/ugent-library/httpx"
 	"github.com/ugent-library/people-service/api/v1"
+	"github.com/ugent-library/people-service/jobs"
 	"github.com/ugent-library/people-service/repositories"
 
 	"github.com/ugent-library/zaphttp"
@@ -40,14 +44,47 @@ var serverCmd = &cobra.Command{
 	Short: "Start the server",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+
 		// setup repo
+		pool, err := pgxpool.New(ctx, config.Repo.Conn)
+		if err != nil {
+			return err
+		}
+
 		repo, err := repositories.New(repositories.Config{
-			Conn:               config.Repo.Conn,
+			Conn:               pool,
 			DeactivationPeriod: config.Repo.DeactivationPeriod,
 		})
 		if err != nil {
 			return err
 		}
+
+		// start job server
+		riverWorkers := river.NewWorkers()
+		river.AddWorker(riverWorkers, jobs.NewDeactivatePeopleWorker(repo))
+		riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+			Workers: riverWorkers,
+			Queues: map[string]river.QueueConfig{
+				river.QueueDefault: {MaxWorkers: 100},
+			},
+			PeriodicJobs: []*river.PeriodicJob{
+				river.NewPeriodicJob(
+					river.PeriodicInterval(10*time.Minute),
+					func() (river.JobArgs, *river.InsertOpts) {
+						return jobs.DeactivatePeopleArgs{}, nil
+					},
+					&river.PeriodicJobOpts{RunOnStart: true},
+				),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if err := riverClient.Start(ctx); err != nil {
+			return err
+		}
+		defer riverClient.Stop(ctx)
 
 		// setup api
 		apiServer, err := api.NewServer(api.NewService(repo), &apiSecurityHandler{APIKey: config.APIKey})
