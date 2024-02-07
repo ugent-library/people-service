@@ -23,8 +23,9 @@ type Config struct {
 	APIKey string `env:"PEOPLE_API_KEY,notEmpty"`
 	// Repository configuration
 	Repo struct {
-		Conn            string        `env:"CONN,notEmpty"`
-		DeactivateAfter time.Duration `env:"DEACTIVATE_AFTER,notEmpty" envDefault:"8h"`
+		// Database connection string
+		Conn               string        `env:"CONN,notEmpty"`
+		DeactivationPeriod time.Duration `env:"DEACTIVATION_PERIOD,notEmpty" envDefault:"8h"`
 	} `envPrefix:"PEOPLE_REPO_"`
 }
 

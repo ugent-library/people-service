@@ -41,6 +41,7 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+	github.com/oklog/ulid/v2 v2.1.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.0.18 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
@@ -71,6 +72,7 @@ require (
 	github.com/pressly/goose/v3 v3.18.0
 	github.com/riverqueue/river v0.0.18
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.0.18
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.0.18
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/swaggest/swgui v1.8.0

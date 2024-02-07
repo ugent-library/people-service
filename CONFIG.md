@@ -17,5 +17,5 @@ Application configuration
  - `PEOPLE_PORT` (default: `3000`) - 
  - `PEOPLE_API_KEY` (**required**, non-empty) - 
  - Repository configuration
-   - `PEOPLE_REPO_CONN` (**required**, non-empty) - 
-   - `PEOPLE_REPO_DEACTIVATE_AFTER` (**required**, non-empty, default: `8h`) - 
+   - `PEOPLE_REPO_CONN` (**required**, non-empty) - Database connection string
+   - `PEOPLE_REPO_DEACTIVATION_PERIOD` (**required**, non-empty, default: `8h`) - 

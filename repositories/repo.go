@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/ugent-library/people-service/db"
 	"github.com/ugent-library/people-service/models"
 )
@@ -29,8 +31,8 @@ type Repo struct {
 }
 
 type Config struct {
-	Conn            string
-	DeactivateAfter time.Duration
+	Conn               string
+	DeactivationPeriod time.Duration
 }
 
 func New(c Config) (*Repo, error) {
@@ -41,11 +43,39 @@ func New(c Config) (*Repo, error) {
 		return nil, err
 	}
 
-	return &Repo{
+	repo := &Repo{
 		config:  c,
 		db:      pool,
 		queries: db.New(pool),
-	}, nil
+	}
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, newDeactivatePeopleWorker(repo))
+
+	// TODO set logger, error handler
+	jobs, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+		Workers: workers,
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {MaxWorkers: 100},
+		},
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(
+				river.PeriodicInterval(10*time.Minute),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return deactivatePeopleArgs{}, nil
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := jobs.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	return repo, nil
 }
 
 // TODO tx needed?
@@ -280,6 +310,6 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 }
 
 func (r *Repo) DeactivatePeople(ctx context.Context) error {
-	t := time.Now().Add(-r.config.DeactivateAfter)
+	t := time.Now().Add(-r.config.DeactivationPeriod)
 	return r.queries.DeactivatePeople(ctx, pgtype.Timestamptz{Valid: true, Time: t})
 }
