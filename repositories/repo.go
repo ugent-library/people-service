@@ -35,12 +35,12 @@ type Repo struct {
 	deactivationPeriod time.Duration
 }
 
-type Config struct {
+type RepoConfig struct {
 	Conn               Conn
 	DeactivationPeriod time.Duration
 }
 
-func New(c Config) (*Repo, error) {
+func NewRepo(c RepoConfig) (*Repo, error) {
 	return &Repo{
 		conn:               c.Conn,
 		queries:            db.New(c.Conn),

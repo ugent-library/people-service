@@ -9,6 +9,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/go-faster/jx"
 
+	"github.com/ogen-go/ogen/json"
 	"github.com/ogen-go/ogen/validate"
 )
 
@@ -805,10 +806,8 @@ func (s *PersonRecord) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.Active.Set {
-			e.FieldStart("active")
-			s.Active.Encode(e)
-		}
+		e.FieldStart("active")
+		e.Bool(s.Active)
 	}
 	{
 		if s.Attributes != nil {
@@ -828,9 +827,17 @@ func (s *PersonRecord) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("createdAt")
+		json.EncodeDateTime(e, s.CreatedAt)
+	}
+	{
+		e.FieldStart("updatedAt")
+		json.EncodeDateTime(e, s.UpdatedAt)
+	}
 }
 
-var jsonFieldsNameOfPersonRecord = [12]string{
+var jsonFieldsNameOfPersonRecord = [14]string{
 	0:  "name",
 	1:  "preferredName",
 	2:  "givenName",
@@ -843,6 +850,8 @@ var jsonFieldsNameOfPersonRecord = [12]string{
 	9:  "active",
 	10: "attributes",
 	11: "identifiers",
+	12: "createdAt",
+	13: "updatedAt",
 }
 
 // Decode decodes PersonRecord from json.
@@ -947,9 +956,11 @@ func (s *PersonRecord) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"username\"")
 			}
 		case "active":
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
-				s.Active.Reset()
-				if err := s.Active.Decode(d); err != nil {
+				v, err := d.Bool()
+				s.Active = bool(v)
+				if err != nil {
 					return err
 				}
 				return nil
@@ -991,6 +1002,30 @@ func (s *PersonRecord) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"identifiers\"")
 			}
+		case "createdAt":
+			requiredBitSet[1] |= 1 << 4
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.CreatedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"createdAt\"")
+			}
+		case "updatedAt":
+			requiredBitSet[1] |= 1 << 5
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.UpdatedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"updatedAt\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -1002,7 +1037,7 @@ func (s *PersonRecord) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b00000001,
-		0b00001000,
+		0b00111010,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

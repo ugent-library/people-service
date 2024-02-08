@@ -62,7 +62,7 @@ func (s *Service) GetPerson(ctx context.Context, id *Identifier) (GetPersonRes, 
 		HonorificPrefix:     OptString{Set: p.HonorificPrefix != "", Value: p.HonorificPrefix},
 		Email:               OptString{Set: p.Email != "", Value: p.Email},
 		Username:            OptString{Set: p.Username != "", Value: p.Username},
-		Active:              NewOptBool(p.Active),
+		Active:              p.Active,
 		Attributes:          attributes,
 		Identifiers:         identifiers,
 	}, nil

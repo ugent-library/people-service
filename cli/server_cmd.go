@@ -52,7 +52,7 @@ var serverCmd = &cobra.Command{
 			return err
 		}
 
-		repo, err := repositories.New(repositories.Config{
+		repo, err := repositories.NewRepo(repositories.RepoConfig{
 			Conn:               pool,
 			DeactivationPeriod: config.Repo.DeactivationPeriod,
 		})

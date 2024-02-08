@@ -4,6 +4,7 @@ package api
 
 import (
 	"fmt"
+	"time"
 )
 
 func (s *ErrorStatusCode) Error() string {
@@ -383,9 +384,11 @@ type PersonRecord struct {
 	HonorificPrefix     OptString    `json:"honorificPrefix"`
 	Email               OptString    `json:"email"`
 	Username            OptString    `json:"username"`
-	Active              OptBool      `json:"active"`
+	Active              bool         `json:"active"`
 	Attributes          []Attribute  `json:"attributes"`
 	Identifiers         []Identifier `json:"identifiers"`
+	CreatedAt           time.Time    `json:"createdAt"`
+	UpdatedAt           time.Time    `json:"updatedAt"`
 }
 
 // GetName returns the value of Name.
@@ -434,7 +437,7 @@ func (s *PersonRecord) GetUsername() OptString {
 }
 
 // GetActive returns the value of Active.
-func (s *PersonRecord) GetActive() OptBool {
+func (s *PersonRecord) GetActive() bool {
 	return s.Active
 }
 
@@ -446,6 +449,16 @@ func (s *PersonRecord) GetAttributes() []Attribute {
 // GetIdentifiers returns the value of Identifiers.
 func (s *PersonRecord) GetIdentifiers() []Identifier {
 	return s.Identifiers
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *PersonRecord) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *PersonRecord) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
 }
 
 // SetName sets the value of Name.
@@ -494,7 +507,7 @@ func (s *PersonRecord) SetUsername(val OptString) {
 }
 
 // SetActive sets the value of Active.
-func (s *PersonRecord) SetActive(val OptBool) {
+func (s *PersonRecord) SetActive(val bool) {
 	s.Active = val
 }
 
@@ -506,6 +519,16 @@ func (s *PersonRecord) SetAttributes(val []Attribute) {
 // SetIdentifiers sets the value of Identifiers.
 func (s *PersonRecord) SetIdentifiers(val []Identifier) {
 	s.Identifiers = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *PersonRecord) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *PersonRecord) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
 }
 
 func (*PersonRecord) getPersonRes() {}
