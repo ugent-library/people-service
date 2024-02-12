@@ -12,10 +12,13 @@ Version info
 
 Application configuration
 
- - `PEOPLE_ENV` (default: `production`) - Env must be local, development, test or production
- - `PEOPLE_HOST` - 
- - `PEOPLE_PORT` (default: `3000`) - 
- - `PEOPLE_API_KEY` (**required**, non-empty) - 
+ - `ENV` (default: `production`) - Env must be local, development, test or production
+ - `HOST` - 
+ - `PORT` (default: `3000`) - 
+ - `API_KEY` (**required**, non-empty) - 
  - Repository configuration
-   - `PEOPLE_REPO_CONN` (**required**, non-empty) - Database connection string
-   - `PEOPLE_REPO_DEACTIVATION_PERIOD` (**required**, non-empty, default: `8h`) - 
+   - `REPO_CONN` (**required**, non-empty) - Database connection string
+   - `REPO_DEACTIVATION_PERIOD` (default: `8h`) - 
+ - Search index configuration
+   - `INDEX_CONN` (**required**, non-empty) - Connection string
+   - `INDEX_RETENTION` (default: `5`) - Index retention

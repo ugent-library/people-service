@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Person struct {
 	Name                string       `json:"name"`
@@ -26,6 +28,10 @@ type PersonRecord struct {
 type Identifier struct {
 	Type  string `json:"type,omitempty"`
 	Value string `json:"value,omitempty"`
+}
+
+func (i Identifier) String() string {
+	return i.Type + ":" + i.Value
 }
 
 type Attribute struct {

@@ -55,7 +55,9 @@ require (
 require (
 	github.com/alexliesenfeld/health v0.8.0
 	github.com/dlclark/regexp2 v1.10.0 // indirect
+	github.com/elastic/go-elasticsearch/v6 v6.8.10
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/georgysavva/scany/v2 v2.1.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-faster/yaml v0.4.6 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -77,6 +79,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/swaggest/swgui v1.8.0
 	github.com/ugent-library/httpx v0.0.0-20231026122034-e9de0b29458b
+	github.com/ugent-library/index v0.0.0-20240208101504-240e390f8d3d
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
 	golang.org/x/net v0.20.0 // indirect

@@ -26,7 +26,7 @@ func init() {
 }
 
 func initConfig() {
-	cobra.CheckErr(env.Parse(&config))
+	cobra.CheckErr(env.ParseWithOptions(&config, env.Options{Prefix: "PEOPLE_"}))
 }
 
 func initVersion() {

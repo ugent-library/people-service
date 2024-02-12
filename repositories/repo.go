@@ -2,13 +2,14 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"time"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/ugent-library/people-service/db"
 	"github.com/ugent-library/people-service/models"
@@ -21,13 +22,6 @@ const (
 var (
 	ErrNotFound = errors.New("not found")
 )
-
-type Conn interface {
-	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...any) pgx.Row
-	Begin(context.Context) (pgx.Tx, error)
-}
 
 type Repo struct {
 	conn               Conn
@@ -55,53 +49,37 @@ func (r *Repo) WithConn(conn Conn) *Repo {
 	return &rr
 }
 
-// TODO tx needed?
 func (r *Repo) GetPerson(ctx context.Context, id models.Identifier) (*models.PersonRecord, error) {
-	tx, err := r.conn.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	queries := r.queries.WithTx(tx)
-
-	person, err := queries.GetPerson(ctx, db.GetPersonParams(id))
+	var row personRow
+	err := pgxscan.Get(ctx, r.conn, &row, getPersonQuery, id.Type, id.Value)
 	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	return row.toPersonRecord(), nil
+}
 
-	ids, err := queries.GetPersonIdentifiers(ctx, person.ID)
+func (r *Repo) EachPerson(ctx context.Context, fn func(*models.PersonRecord) bool) error {
+	rows, err := r.conn.Query(ctx, getAllPeopleQuery)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	defer rows.Close()
 
-	p := &models.PersonRecord{
-		Person: models.Person{
-			Name:                person.Name,
-			PreferredName:       person.PreferredName.String,
-			GivenName:           person.GivenName.String,
-			PreferredGivenName:  person.PreferredGivenName.String,
-			FamilyName:          person.FamilyName.String,
-			PreferredFamilyName: person.PreferredFamilyName.String,
-			HonorificPrefix:     person.HonorificPrefix.String,
-			Email:               person.Email.String,
-			Username:            person.Username.String,
-			Active:              person.Active,
-			Identifiers:         make([]models.Identifier, len(ids)),
-			Attributes:          person.Attributes,
-		},
-		CreatedAt: person.CreatedAt.Time,
-		UpdatedAt: person.UpdatedAt.Time,
+	rs := pgxscan.NewRowScanner(rows)
+
+	for rows.Next() {
+		var row personRow
+		if err := rs.Scan(&row); err != nil {
+			return err
+		}
+		if ok := fn(row.toPersonRecord()); !ok {
+			break
+		}
 	}
-
-	for i, id := range ids {
-		p.Person.Identifiers[i] = models.Identifier{Type: id.Type, Value: id.Value}
-	}
-
-	return p, tx.Commit(ctx)
+	return rows.Err()
 }
 
 func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
@@ -114,28 +92,29 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 	queries := r.queries.WithTx(tx)
 
 	// gather existing related people and identifiers
-	var existingPeople []db.Person
-	var existingIdentifiers []db.PeopleIdentifier
+
+	var existingPeople []db.GetPersonRow
+	var existingIdentifiers [][]models.Identifier
 
 	for _, id := range p.Identifiers {
-		person, err := queries.GetPerson(ctx, db.GetPersonParams(id))
+		row, err := queries.GetPerson(ctx, db.GetPersonParams(id))
 		if err != nil && err != pgx.ErrNoRows {
 			return err
 		}
 		if err == pgx.ErrNoRows {
 			continue
 		}
-		if !slices.ContainsFunc(existingPeople, func(p db.Person) bool { return p.ID == person.ID }) {
-			identifiers, err := queries.GetPersonIdentifiers(ctx, person.ID)
-			if err != nil {
+		if !slices.ContainsFunc(existingPeople, func(p db.GetPersonRow) bool { return p.ID == row.ID }) {
+			var identifiers []models.Identifier
+			if err := json.Unmarshal(row.Identifiers, &identifiers); err != nil {
 				return err
 			}
-			existingPeople = append(existingPeople, person)
-			existingIdentifiers = append(existingIdentifiers, identifiers...)
+			existingPeople = append(existingPeople, row)
+			existingIdentifiers = append(existingIdentifiers, identifiers)
 		}
 	}
 
-	slices.SortFunc(existingPeople, func(a, b db.Person) int {
+	slices.SortFunc(existingPeople, func(a, b db.GetPersonRow) int {
 		if a.UpdatedAt.Time.Before(b.UpdatedAt.Time) {
 			return 1
 		}
@@ -242,24 +221,26 @@ func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 		return err
 	}
 
-	for _, id := range existingIdentifiers {
-		if id.Type == IDType && id.PersonID != personID {
-			err = queries.TransferPersonIdentifier(ctx, db.TransferPersonIdentifierParams{
-				PersonID: personID,
-				Type:     id.Type,
-				Value:    id.Value,
-			})
-			if err != nil {
-				return err
+	for i, row := range existingPeople {
+		for _, id := range existingIdentifiers[i] {
+			if id.Type == IDType && row.ID != personID {
+				err = queries.TransferPersonIdentifier(ctx, db.TransferPersonIdentifierParams{
+					PersonID: personID,
+					Type:     id.Type,
+					Value:    id.Value,
+				})
+				if err != nil {
+					return err
+				}
 			}
-		}
-		if id.Type != IDType {
-			err = queries.DeletePersonIdentifier(ctx, db.DeletePersonIdentifierParams{
-				Type:  id.Type,
-				Value: id.Value,
-			})
-			if err != nil {
-				return err
+			if id.Type != IDType {
+				err = queries.DeletePersonIdentifier(ctx, db.DeletePersonIdentifierParams{
+					Type:  id.Type,
+					Value: id.Value,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

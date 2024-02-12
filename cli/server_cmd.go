@@ -17,6 +17,7 @@ import (
 	"github.com/swaggest/swgui/v5emb"
 	"github.com/ugent-library/httpx"
 	"github.com/ugent-library/people-service/api/v1"
+	"github.com/ugent-library/people-service/indexes"
 	"github.com/ugent-library/people-service/jobs"
 	"github.com/ugent-library/people-service/repositories"
 
@@ -60,9 +61,19 @@ var serverCmd = &cobra.Command{
 			return err
 		}
 
+		index, err := indexes.NewIndex(indexes.IndexConfig{
+			Conn:      config.Index.Conn,
+			Name:      config.Index.Name,
+			Retention: config.Index.Retention,
+		})
+		if err != nil {
+			return err
+		}
+
 		// start job server
 		riverWorkers := river.NewWorkers()
 		river.AddWorker(riverWorkers, jobs.NewDeactivatePeopleWorker(repo))
+		river.AddWorker(riverWorkers, jobs.NewReindexPeopleWorker(repo, index))
 		riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 			Workers: riverWorkers,
 			Queues: map[string]river.QueueConfig{
@@ -73,6 +84,13 @@ var serverCmd = &cobra.Command{
 					river.PeriodicInterval(10*time.Minute),
 					func() (river.JobArgs, *river.InsertOpts) {
 						return jobs.DeactivatePeopleArgs{}, nil
+					},
+					&river.PeriodicJobOpts{RunOnStart: true},
+				),
+				river.NewPeriodicJob(
+					river.PeriodicInterval(30*time.Minute),
+					func() (river.JobArgs, *river.InsertOpts) {
+						return jobs.ReindexPeopleArgs{}, nil
 					},
 					&river.PeriodicJobOpts{RunOnStart: true},
 				),

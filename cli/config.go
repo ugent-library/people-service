@@ -17,16 +17,25 @@ type Version struct {
 // Application configuration
 type Config struct {
 	// Env must be local, development, test or production
-	Env    string `env:"PEOPLE_ENV" envDefault:"production"`
-	Host   string `env:"PEOPLE_HOST"`
-	Port   int    `env:"PEOPLE_PORT" envDefault:"3000"`
-	APIKey string `env:"PEOPLE_API_KEY,notEmpty"`
+	Env    string `env:"ENV" envDefault:"production"`
+	Host   string `env:"HOST"`
+	Port   int    `env:"PORT" envDefault:"3000"`
+	APIKey string `env:"API_KEY,notEmpty"`
 	// Repository configuration
 	Repo struct {
 		// Database connection string
 		Conn               string        `env:"CONN,notEmpty"`
-		DeactivationPeriod time.Duration `env:"DEACTIVATION_PERIOD,notEmpty" envDefault:"8h"`
-	} `envPrefix:"PEOPLE_REPO_"`
+		DeactivationPeriod time.Duration `env:"DEACTIVATION_PERIOD" envDefault:"8h"`
+	} `envPrefix:"REPO_"`
+	// Search index configuration
+	Index struct {
+		// Connection string
+		Conn string `env:"CONN,notEmpty"`
+		// Index Name
+		Name string `env:"NAME,notEmpty"`
+		// Index retention
+		Retention int `env:"RETENTION" envDefault:"5"`
+	} `envPrefix:"INDEX_"`
 }
 
 func (c Config) Addr() string {

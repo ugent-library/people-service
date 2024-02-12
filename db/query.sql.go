@@ -116,10 +116,77 @@ func (q *Queries) DeletePersonIdentifier(ctx context.Context, arg DeletePersonId
 	return err
 }
 
+const getAllPeople = `-- name: GetAllPeople :many
+SELECT p.id, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.active, p.username, p.attributes, p.created_at, p.updated_at, json_agg(json_build_object('type', pi.type, 'value', pi.value)) AS identifiers
+FROM people p
+LEFT JOIN  people_identifiers pi ON p.id = pi.person_id
+GROUP BY p.id
+`
+
+type GetAllPeopleRow struct {
+	ID                  int64
+	Name                string
+	PreferredName       pgtype.Text
+	GivenName           pgtype.Text
+	FamilyName          pgtype.Text
+	PreferredGivenName  pgtype.Text
+	PreferredFamilyName pgtype.Text
+	HonorificPrefix     pgtype.Text
+	Email               pgtype.Text
+	Active              bool
+	Username            pgtype.Text
+	Attributes          []models.Attribute
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	Identifiers         []byte
+}
+
+func (q *Queries) GetAllPeople(ctx context.Context) ([]GetAllPeopleRow, error) {
+	rows, err := q.db.Query(ctx, getAllPeople)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllPeopleRow
+	for rows.Next() {
+		var i GetAllPeopleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.PreferredName,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.PreferredGivenName,
+			&i.PreferredFamilyName,
+			&i.HonorificPrefix,
+			&i.Email,
+			&i.Active,
+			&i.Username,
+			&i.Attributes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Identifiers,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPerson = `-- name: GetPerson :one
-SELECT p.id, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.active, p.username, p.attributes, p.created_at, p.updated_at
-FROM people p, people_identifiers pi
-WHERE p.id = pi.person_id AND pi.type = $1 AND pi.value = $2
+WITH i AS (
+  SELECT i1.person_id, i1.type, i1.value
+  FROM people_identifiers i1
+  LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
+  WHERE i2.type = $1 AND i2.value = $2	
+)
+SELECT p.id, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.active, p.username, p.attributes, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
+FROM people p, i WHERE p.id = i.person_id
+GROUP BY p.id
 `
 
 type GetPersonParams struct {
@@ -127,9 +194,27 @@ type GetPersonParams struct {
 	Value string
 }
 
-func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (Person, error) {
+type GetPersonRow struct {
+	ID                  int64
+	Name                string
+	PreferredName       pgtype.Text
+	GivenName           pgtype.Text
+	FamilyName          pgtype.Text
+	PreferredGivenName  pgtype.Text
+	PreferredFamilyName pgtype.Text
+	HonorificPrefix     pgtype.Text
+	Email               pgtype.Text
+	Active              bool
+	Username            pgtype.Text
+	Attributes          []models.Attribute
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	Identifiers         []byte
+}
+
+func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (GetPersonRow, error) {
 	row := q.db.QueryRow(ctx, getPerson, arg.Type, arg.Value)
-	var i Person
+	var i GetPersonRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -145,6 +230,7 @@ func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (Person, e
 		&i.Attributes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Identifiers,
 	)
 	return i, err
 }

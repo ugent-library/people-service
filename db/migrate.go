@@ -10,11 +10,11 @@ import (
 )
 
 //go:embed migrations/*.sql
-var embedMigrations embed.FS
+var migrationsFS embed.FS
 
 func init() {
 	goose.SetTableName("goose_migration")
-	goose.SetBaseFS(embedMigrations)
+	goose.SetBaseFS(migrationsFS)
 }
 
 func MigrateUp(ctx context.Context, conn string) error {
