@@ -43,6 +43,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/ulid/v2 v2.1.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.0.18 // indirect
+	github.com/samber/slog-chi v1.9.1 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect

@@ -27,7 +27,16 @@ func (UnimplementedHandler) AddPerson(ctx context.Context, req *Person) error {
 // Get a person.
 //
 // POST /get-person
-func (UnimplementedHandler) GetPerson(ctx context.Context, req *Identifier) (r GetPersonRes, _ error) {
+func (UnimplementedHandler) GetPerson(ctx context.Context, req *GetPersonRequest) (r GetPersonRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// SearchPeople implements searchPeople operation.
+//
+// Search people.
+//
+// POST /search-people
+func (UnimplementedHandler) SearchPeople(ctx context.Context, req *SearchPeopleRequest) (r *PersonHits, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

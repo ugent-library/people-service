@@ -19,7 +19,13 @@ type Handler interface {
 	// Get a person.
 	//
 	// POST /get-person
-	GetPerson(ctx context.Context, req *Identifier) (GetPersonRes, error)
+	GetPerson(ctx context.Context, req *GetPersonRequest) (GetPersonRes, error)
+	// SearchPeople implements searchPeople operation.
+	//
+	// Search people.
+	//
+	// POST /search-people
+	SearchPeople(ctx context.Context, req *SearchPeopleRequest) (*PersonHits, error)
 	// NewError creates *ErrorStatusCode from error returned by handler.
 	//
 	// Used for common default response.

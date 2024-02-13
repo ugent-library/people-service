@@ -26,7 +26,21 @@ func encodeAddPersonRequest(
 }
 
 func encodeGetPersonRequest(
-	req *Identifier,
+	req *GetPersonRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeSearchPeopleRequest(
+	req *SearchPeopleRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

@@ -102,6 +102,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 
 				elem = origElem
+			case 's': // Prefix: "search-people"
+				origElem := elem
+				if l := len("search-people"); len(elem) >= l && elem[0:l] == "search-people" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "POST":
+						s.handleSearchPeopleRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "POST")
+					}
+
+					return
+				}
+
+				elem = origElem
 			}
 
 			elem = origElem
@@ -238,6 +259,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.summary = "Get a person"
 						r.operationID = "getPerson"
 						r.pathPattern = "/get-person"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+				elem = origElem
+			case 's': // Prefix: "search-people"
+				origElem := elem
+				if l := len("search-people"); len(elem) >= l && elem[0:l] == "search-people" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "POST":
+						// Leaf: SearchPeople
+						r.name = "SearchPeople"
+						r.summary = "Search people"
+						r.operationID = "searchPeople"
+						r.pathPattern = "/search-people"
 						r.args = args
 						r.count = 0
 						return r, true

@@ -1,16 +1,18 @@
 package cli
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/caarlos0/env/v8"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var (
 	version Version
 	config  Config
-	logger  *zap.SugaredLogger
+	logger  *slog.Logger
 
 	rootCmd = &cobra.Command{
 		Use:   "people",
@@ -20,9 +22,6 @@ var (
 
 func init() {
 	cobra.OnInitialize(initVersion, initConfig, initLogger)
-	cobra.OnFinalize(func() {
-		logger.Sync()
-	})
 }
 
 func initConfig() {
@@ -35,13 +34,9 @@ func initVersion() {
 
 func initLogger() {
 	if config.Env == "local" {
-		l, err := zap.NewDevelopment()
-		cobra.CheckErr(err)
-		logger = l.Sugar()
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	} else {
-		l, err := zap.NewProduction()
-		cobra.CheckErr(err)
-		logger = l.Sugar()
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
 }
 

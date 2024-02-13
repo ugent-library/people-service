@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v6"
@@ -24,12 +25,14 @@ type IndexConfig struct {
 	Conn      string
 	Name      string
 	Retention int
+	Logger    *slog.Logger
 }
 
 type Index struct {
 	client    *elasticsearch.Client
 	alias     string
 	retention int
+	logger    *slog.Logger
 }
 
 func NewIndex(c IndexConfig) (*Index, error) {
@@ -44,16 +47,17 @@ func NewIndex(c IndexConfig) (*Index, error) {
 		client:    client,
 		alias:     c.Name,
 		retention: c.Retention,
+		logger:    c.Logger,
 	}, nil
 }
 
-type responseBody struct {
+type responseBody[T any] struct {
 	Hits struct {
 		Total int `json:"total"`
 		Hits  []struct {
 			ID     string `json:"_id"`
 			Source struct {
-				Record *models.PersonRecord
+				Record T
 			} `json:"_source"`
 		} `json:"hits"`
 	} `json:"hits"`
@@ -70,9 +74,7 @@ func (idx *Index) SearchPeople(ctx context.Context, q string) ([]*models.PersonR
 		"match_all": map[string]any{},
 	}
 
-	q = strings.TrimSpace(q)
-
-	if q != "" {
+	if q = strings.TrimSpace(q); q != "" {
 		dismaxQueries := make([]map[string]any, 0, len(boosts))
 		for field, boost := range boosts {
 			dismaxQuery := map[string]any{
@@ -96,10 +98,7 @@ func (idx *Index) SearchPeople(ctx context.Context, q string) ([]*models.PersonR
 	reqBody := map[string]any{
 		"query": query,
 		"size":  20,
-		"sort":  []string{"_score:desc"},
 	}
-
-	resBody := &responseBody{}
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(reqBody); err != nil {
@@ -111,6 +110,7 @@ func (idx *Index) SearchPeople(ctx context.Context, q string) ([]*models.PersonR
 		idx.client.Search.WithIndex(idx.alias),
 		idx.client.Search.WithTrackTotalHits(true),
 		idx.client.Search.WithBody(&buf),
+		idx.client.Search.WithSort("_score:desc"),
 	)
 	if err != nil {
 		return nil, err
@@ -122,11 +122,13 @@ func (idx *Index) SearchPeople(ctx context.Context, q string) ([]*models.PersonR
 		if _, err := io.Copy(buf, res.Body); err != nil {
 			return nil, err
 		}
-		return nil, errors.New("elastic search: error response: " + buf.String())
+		return nil, errors.New("elasticsearch: error response: " + buf.String())
 	}
 
+	resBody := &responseBody[*models.PersonRecord]{}
+
 	if err := json.NewDecoder(res.Body).Decode(resBody); err != nil {
-		return nil, fmt.Errorf("elastic search: error parsing the response body: %w", err)
+		return nil, fmt.Errorf("elasticsearch: error parsing response body: %w", err)
 	}
 
 	recs := make([]*models.PersonRecord, len(resBody.Hits.Hits))
@@ -151,13 +153,14 @@ func (idx *Index) ReindexPeople(ctx context.Context, iter PersonIter) error {
 
 	indexer, err := index.NewIndexer(idx.client, switcher.Name(), index.IndexerConfig{
 		OnError: func(err error) {
-			// logger.Errorf("Indexer error: %w", err)
+			idx.logger.ErrorContext(ctx, "index error", slog.Any("error", err))
 		},
 		OnIndexFailure: func(str string, err error) {
-			// logger.Errorf("Failed indexing document: %s, %w", str, err)
+			idx.logger.ErrorContext(ctx, "index failure", slog.String("doc", str), slog.Any("error", err))
 		},
 		OnIndexSuccess: func(str string) {
-			// logger.Infof("Indexed document: %s", str)
+			idx.logger.InfoContext(ctx, "index success", slog.String("doc", str))
+
 		},
 	})
 	if err != nil {

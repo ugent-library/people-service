@@ -13,6 +13,7 @@ import (
 	"github.com/ory/graceful"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	slogchi "github.com/samber/slog-chi"
 	"github.com/spf13/cobra"
 	"github.com/swaggest/swgui/v5emb"
 	"github.com/ugent-library/httpx"
@@ -20,9 +21,6 @@ import (
 	"github.com/ugent-library/people-service/indexes"
 	"github.com/ugent-library/people-service/jobs"
 	"github.com/ugent-library/people-service/repositories"
-
-	"github.com/ugent-library/zaphttp"
-	"github.com/ugent-library/zaphttp/zapchi"
 )
 
 func init() {
@@ -65,6 +63,7 @@ var serverCmd = &cobra.Command{
 			Conn:      config.Index.Conn,
 			Name:      config.Index.Name,
 			Retention: config.Index.Retention,
+			Logger:    logger,
 		})
 		if err != nil {
 			return err
@@ -75,6 +74,7 @@ var serverCmd = &cobra.Command{
 		river.AddWorker(riverWorkers, jobs.NewDeactivatePeopleWorker(repo))
 		river.AddWorker(riverWorkers, jobs.NewReindexPeopleWorker(repo, index))
 		riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+			Logger:  logger,
 			Workers: riverWorkers,
 			Queues: map[string]river.QueueConfig{
 				river.QueueDefault: {MaxWorkers: 100},
@@ -105,7 +105,7 @@ var serverCmd = &cobra.Command{
 		defer riverClient.Stop(ctx)
 
 		// setup api
-		apiServer, err := api.NewServer(api.NewService(repo), &apiSecurityHandler{APIKey: config.APIKey})
+		apiServer, err := api.NewServer(api.NewService(repo, index), &apiSecurityHandler{APIKey: config.APIKey})
 		if err != nil {
 			return err
 		}
@@ -116,8 +116,9 @@ var serverCmd = &cobra.Command{
 		if config.Env != "local" {
 			mux.Use(middleware.RealIP)
 		}
-		mux.Use(zaphttp.SetLogger(logger.Desugar(), zapchi.RequestID))
-		mux.Use(middleware.RequestLogger(zapchi.LogFormatter()))
+		mux.Use(slogchi.NewWithConfig(logger, slogchi.Config{
+			WithRequestID: true,
+		}))
 		mux.Use(middleware.Recoverer)
 
 		// mount health and info
@@ -152,7 +153,7 @@ var serverCmd = &cobra.Command{
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 10 * time.Second,
 		})
-		logger.Infof("starting server at %s", config.Addr())
+		logger.Info("starting server", "addr", config.Addr())
 		if err := graceful.Graceful(server.ListenAndServe, server.Shutdown); err != nil {
 			return err
 		}

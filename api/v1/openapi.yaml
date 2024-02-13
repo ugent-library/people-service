@@ -17,7 +17,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Identifier"
+              $ref: "#/components/schemas/GetPersonRequest"
         required: true
       responses:
         "200":
@@ -31,6 +31,27 @@ paths:
           $ref: "#/components/responses/Error"
         default:
           $ref: "#/components/responses/Error"
+
+  "/search-people":
+    post:
+      summary: "Search people"
+      description: "Search people"
+      operationId: "searchPeople"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchPeopleRequest"
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonHits"
+        default:
+          $ref: "#/components/responses/Error"  
 
   "/add-person":
     post:
@@ -76,9 +97,21 @@ components:
           format: int64
         message:
           type: string
-      required:
-        - code
-        - message
+      required: [code, message]
+
+    GetPersonRequest:
+      type: object
+      properties:
+        identifier:
+          $ref: "#/components/schemas/Identifier"
+      required: [identifier]
+
+    SearchPeopleRequest:
+      type: object
+      properties:
+        query:
+          type: string
+      required: [query]
 
     Person:
       type: object
@@ -196,3 +229,12 @@ components:
           type: string
           format: date-time
       required: [name, identifiers, active, createdAt, updatedAt]
+
+    PersonHits:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonRecord"
+      required: [hits]

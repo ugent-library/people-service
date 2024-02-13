@@ -21,4 +21,5 @@ Application configuration
    - `REPO_DEACTIVATION_PERIOD` (default: `8h`) - 
  - Search index configuration
    - `INDEX_CONN` (**required**, non-empty) - Connection string
+   - `INDEX_NAME` (**required**, non-empty) - Index Name
    - `INDEX_RETENTION` (default: `5`) - Index retention

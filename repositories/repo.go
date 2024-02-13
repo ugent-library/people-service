@@ -82,6 +82,7 @@ func (r *Repo) EachPerson(ctx context.Context, fn func(*models.PersonRecord) boo
 	return rows.Err()
 }
 
+// TODO keep oldest created_at?
 func (r *Repo) AddPerson(ctx context.Context, p *models.Person) error {
 	tx, err := r.conn.Begin(ctx)
 	if err != nil {

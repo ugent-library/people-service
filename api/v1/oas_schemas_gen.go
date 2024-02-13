@@ -119,6 +119,21 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 
 func (*ErrorStatusCode) getPersonRes() {}
 
+// Ref: #/components/schemas/GetPersonRequest
+type GetPersonRequest struct {
+	Identifier Identifier `json:"identifier"`
+}
+
+// GetIdentifier returns the value of Identifier.
+func (s *GetPersonRequest) GetIdentifier() Identifier {
+	return s.Identifier
+}
+
+// SetIdentifier sets the value of Identifier.
+func (s *GetPersonRequest) SetIdentifier(val Identifier) {
+	s.Identifier = val
+}
+
 // Ref: #/components/schemas/Identifier
 type Identifier struct {
 	Type  string `json:"type"`
@@ -373,6 +388,21 @@ func (s *Person) SetIdentifiers(val []Identifier) {
 	s.Identifiers = val
 }
 
+// Ref: #/components/schemas/PersonHits
+type PersonHits struct {
+	Hits []PersonRecord `json:"hits"`
+}
+
+// GetHits returns the value of Hits.
+func (s *PersonHits) GetHits() []PersonRecord {
+	return s.Hits
+}
+
+// SetHits sets the value of Hits.
+func (s *PersonHits) SetHits(val []PersonRecord) {
+	s.Hits = val
+}
+
 // Ref: #/components/schemas/PersonRecord
 type PersonRecord struct {
 	Name                string       `json:"name"`
@@ -532,3 +562,18 @@ func (s *PersonRecord) SetUpdatedAt(val time.Time) {
 }
 
 func (*PersonRecord) getPersonRes() {}
+
+// Ref: #/components/schemas/SearchPeopleRequest
+type SearchPeopleRequest struct {
+	Query string `json:"query"`
+}
+
+// GetQuery returns the value of Query.
+func (s *SearchPeopleRequest) GetQuery() string {
+	return s.Query
+}
+
+// SetQuery sets the value of Query.
+func (s *SearchPeopleRequest) SetQuery(val string) {
+	s.Query = val
+}
