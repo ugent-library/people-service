@@ -1,8 +1,6 @@
 module github.com/ugent-library/people-service
 
-go 1.21.4
-
-toolchain go1.21.6
+go 1.21.6
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
@@ -14,43 +12,25 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/ogen-go/ogen v0.81.2
 	github.com/ory/graceful v0.1.3
+	github.com/samber/slog-chi v1.9.1
 	github.com/spf13/cobra v1.8.0
-	github.com/ugent-library/zaphttp v0.0.0-20231026141151-4cbb4e2eb87a
 	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/metric v1.22.0
 	go.opentelemetry.io/otel/trace v1.22.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.26.0
 )
 
 require (
-	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/semver/v3 v3.2.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
-	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect
-	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.6.1 // indirect
-	github.com/jackc/pgio v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.0.2 // indirect
-	github.com/jackc/pgtype v1.4.0 // indirect
-	github.com/jackc/pgx/v4 v4.7.1 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/mitchellh/copystructure v1.2.0 // indirect
-	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/ulid/v2 v2.1.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.0.18 // indirect
-	github.com/samber/slog-chi v1.9.1 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
 	github.com/vearutop/statigz v1.4.0 // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
+	go.uber.org/zap v1.26.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/grpc v1.61.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 )
 
 require (
@@ -67,8 +47,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	github.com/jackc/tern v1.13.0
-	github.com/jackc/tern/v2 v2.1.1
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
