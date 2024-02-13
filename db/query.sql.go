@@ -63,7 +63,7 @@ func (q *Queries) CreatePerson(ctx context.Context, arg CreatePersonParams) (int
 }
 
 const createPersonIdentifier = `-- name: CreatePersonIdentifier :exec
-INSERT INTO people_identifiers (
+INSERT INTO person_identifiers (
   person_id,
   type,
   value
@@ -102,7 +102,7 @@ func (q *Queries) DeletePerson(ctx context.Context, id int64) error {
 }
 
 const deletePersonIdentifier = `-- name: DeletePersonIdentifier :exec
-DELETE FROM people_identifiers
+DELETE FROM person_identifiers
 WHERE type = $1 AND value = $2
 `
 
@@ -119,8 +119,8 @@ func (q *Queries) DeletePersonIdentifier(ctx context.Context, arg DeletePersonId
 const getPerson = `-- name: GetPerson :one
 WITH i AS (
   SELECT i1.person_id, i1.type, i1.value
-  FROM people_identifiers i1
-  LEFT JOIN  people_identifiers i2 ON i1.person_id = i2.person_id
+  FROM person_identifiers i1
+  LEFT JOIN  person_identifiers i2 ON i1.person_id = i2.person_id
   WHERE i2.type = $1 AND i2.value = $2	
 )
 SELECT p.id, p.name, p.preferred_name, p.given_name, p.family_name, p.preferred_given_name, p.preferred_family_name, p.honorific_prefix, p.email, p.active, p.username, p.attributes, p.created_at, p.updated_at, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
@@ -176,19 +176,19 @@ func (q *Queries) GetPerson(ctx context.Context, arg GetPersonParams) (GetPerson
 
 const getPersonIdentifiers = `-- name: GetPersonIdentifiers :many
 SELECT person_id, type, value
-FROM people_identifiers
+FROM person_identifiers
 WHERE person_id = $1
 `
 
-func (q *Queries) GetPersonIdentifiers(ctx context.Context, personID int64) ([]PeopleIdentifier, error) {
+func (q *Queries) GetPersonIdentifiers(ctx context.Context, personID int64) ([]PersonIdentifier, error) {
 	rows, err := q.db.Query(ctx, getPersonIdentifiers, personID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PeopleIdentifier
+	var items []PersonIdentifier
 	for rows.Next() {
-		var i PeopleIdentifier
+		var i PersonIdentifier
 		if err := rows.Scan(&i.PersonID, &i.Type, &i.Value); err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func (q *Queries) GetPersonIdentifiers(ctx context.Context, personID int64) ([]P
 }
 
 const transferPersonIdentifier = `-- name: TransferPersonIdentifier :exec
-UPDATE people_identifiers SET person_id = ($3)
+UPDATE person_identifiers SET person_id = ($3)
 WHERE type = $1 AND value = $2
 `
 

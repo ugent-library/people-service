@@ -9,10 +9,18 @@ import (
 	"github.com/ugent-library/people-service/models"
 )
 
-type PeopleIdentifier struct {
-	PersonID int64
-	Type     string
-	Value    string
+type Organization struct {
+	ID        int64
+	ParentID  pgtype.Int8
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type OrganizationIdentifier struct {
+	OrganizationID int64
+	Type           string
+	Value          string
 }
 
 type Person struct {
@@ -30,4 +38,10 @@ type Person struct {
 	Attributes          []models.Attribute
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
+}
+
+type PersonIdentifier struct {
+	PersonID int64
+	Type     string
+	Value    string
 }

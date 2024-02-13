@@ -58,8 +58,8 @@ func (row personRow) toPersonRecord() *models.PersonRecord {
 const getPersonQuery = `
 WITH identifiers AS (
 	SELECT pi1.*
-	FROM people_identifiers pi1
-	LEFT JOIN  people_identifiers pi2 ON pi1.person_id = pi2.person_id
+	FROM person_identifiers pi1
+	LEFT JOIN  person_identifiers pi2 ON pi1.person_id = pi2.person_id
 	WHERE pi2.type = $1 AND pi2.value = $2	
 )
 SELECT p.*, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
@@ -70,6 +70,6 @@ GROUP BY p.id;
 const getAllPeopleQuery = `
 SELECT p.*, json_agg(json_build_object('type', pi.type, 'value', pi.value)) AS identifiers
 FROM people p
-LEFT JOIN people_identifiers pi ON p.id = pi.person_id
+LEFT JOIN person_identifiers pi ON p.id = pi.person_id
 GROUP BY p.id;
 `

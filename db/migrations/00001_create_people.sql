@@ -19,16 +19,16 @@ CREATE TABLE people (
 
 CREATE INDEX people_updated_at_key ON people (updated_at);
 
-CREATE TABLE people_identifiers (
+CREATE TABLE person_identifiers (
   person_id BIGINT NOT NULL REFERENCES people ON DELETE CASCADE,
   type TEXT CHECK (type <> ''),
   value TEXT CHECK (value <> ''),
   PRIMARY KEY (type, value)
 );
 
-CREATE INDEX people_identifiers_person_id_fkey ON people_identifiers (person_id);
+CREATE INDEX person_identifiers_person_id_fkey ON person_identifiers (person_id);
 
 -- +goose Down
 
 DROP TABLE people CASCADE;
-DROP TABLE people_identifiers CASCADE;
+DROP TABLE person_identifiers CASCADE;

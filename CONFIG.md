@@ -19,7 +19,12 @@ Application configuration
  - Repository configuration
    - `REPO_CONN` (**required**, non-empty) - Database connection string
    - `REPO_DEACTIVATION_PERIOD` (default: `8h`) - 
- - Search index configuration
+   - `REPO_CONN` (**required**, non-empty) - Connection string
+   - `REPO_NAME` (**required**, non-empty) - Index Name
+   - `REPO_RETENTION` (default: `5`) - Index retention
+ - Repository configuration
+   - `INDEX_CONN` (**required**, non-empty) - Database connection string
+   - `INDEX_DEACTIVATION_PERIOD` (default: `8h`) - 
    - `INDEX_CONN` (**required**, non-empty) - Connection string
    - `INDEX_NAME` (**required**, non-empty) - Index Name
    - `INDEX_RETENTION` (default: `5`) - Index retention
