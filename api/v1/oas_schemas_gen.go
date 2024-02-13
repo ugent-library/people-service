@@ -14,6 +14,21 @@ func (s *ErrorStatusCode) Error() string {
 // AddPersonOK is response for AddPerson operation.
 type AddPersonOK struct{}
 
+// Ref: #/components/schemas/AddPersonRequest
+type AddPersonRequest struct {
+	Person Person `json:"person"`
+}
+
+// GetPerson returns the value of Person.
+func (s *AddPersonRequest) GetPerson() Person {
+	return s.Person
+}
+
+// SetPerson sets the value of Person.
+func (s *AddPersonRequest) SetPerson(val Person) {
+	s.Person = val
+}
+
 type ApiKey struct {
 	APIKey string
 }

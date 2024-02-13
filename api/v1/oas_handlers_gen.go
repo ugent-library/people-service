@@ -137,7 +137,7 @@ func (s *Server) handleAddPersonRequest(args [0]string, argsEscaped bool, w http
 		}
 
 		type (
-			Request  = *Person
+			Request  = *AddPersonRequest
 			Params   = struct{}
 			Response = *AddPersonOK
 		)

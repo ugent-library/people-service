@@ -65,7 +65,9 @@ func (s *Service) SearchPeople(ctx context.Context, req *SearchPeopleRequest) (*
 	return res, nil
 }
 
-func (s *Service) AddPerson(ctx context.Context, p *Person) error {
+func (s *Service) AddPerson(ctx context.Context, req *AddPersonRequest) error {
+	p := req.Person
+
 	attributes := make([]models.Attribute, len(p.Attributes))
 	for i, attr := range p.Attributes {
 		attributes[i] = models.Attribute(attr)

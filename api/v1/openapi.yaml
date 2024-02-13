@@ -62,7 +62,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Person"
+              $ref: "#/components/schemas/AddPersonRequest"
         required: true
       responses:
         "200":
@@ -112,6 +112,13 @@ components:
         query:
           type: string
       required: [query]
+
+    AddPersonRequest:
+      type: object
+      properties:
+        person:
+          $ref: "#/components/schemas/Person"
+      required: [person]
 
     Person:
       type: object

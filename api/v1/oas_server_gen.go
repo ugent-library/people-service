@@ -13,7 +13,7 @@ type Handler interface {
 	// Upsert a person.
 	//
 	// POST /add-person
-	AddPerson(ctx context.Context, req *Person) error
+	AddPerson(ctx context.Context, req *AddPersonRequest) error
 	// GetPerson implements getPerson operation.
 	//
 	// Get a person.

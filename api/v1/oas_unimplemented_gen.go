@@ -18,7 +18,7 @@ var _ Handler = UnimplementedHandler{}
 // Upsert a person.
 //
 // POST /add-person
-func (UnimplementedHandler) AddPerson(ctx context.Context, req *Person) error {
+func (UnimplementedHandler) AddPerson(ctx context.Context, req *AddPersonRequest) error {
 	return ht.ErrNotImplemented
 }
 

@@ -12,7 +12,7 @@ import (
 )
 
 func encodeAddPersonRequest(
-	req *Person,
+	req *AddPersonRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

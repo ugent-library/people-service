@@ -16,7 +16,7 @@ import (
 )
 
 func (s *Server) decodeAddPersonRequest(r *http.Request) (
-	req *Person,
+	req *AddPersonRequest,
 	close func() error,
 	rerr error,
 ) {
@@ -55,7 +55,7 @@ func (s *Server) decodeAddPersonRequest(r *http.Request) (
 
 		d := jx.DecodeBytes(buf)
 
-		var request Person
+		var request AddPersonRequest
 		if err := func() error {
 			if err := request.Decode(d); err != nil {
 				return err

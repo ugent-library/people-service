@@ -28,7 +28,7 @@ type Invoker interface {
 	// Upsert a person.
 	//
 	// POST /add-person
-	AddPerson(ctx context.Context, request *Person) error
+	AddPerson(ctx context.Context, request *AddPersonRequest) error
 	// GetPerson invokes getPerson operation.
 	//
 	// Get a person.
@@ -102,12 +102,12 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 // Upsert a person.
 //
 // POST /add-person
-func (c *Client) AddPerson(ctx context.Context, request *Person) error {
+func (c *Client) AddPerson(ctx context.Context, request *AddPersonRequest) error {
 	_, err := c.sendAddPerson(ctx, request)
 	return err
 }
 
-func (c *Client) sendAddPerson(ctx context.Context, request *Person) (res *AddPersonOK, err error) {
+func (c *Client) sendAddPerson(ctx context.Context, request *AddPersonRequest) (res *AddPersonOK, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("addPerson"),
 		semconv.HTTPMethodKey.String("POST"),
