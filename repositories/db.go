@@ -36,22 +36,20 @@ type personRow struct {
 
 func (row personRow) toPersonRecord() *models.PersonRecord {
 	return &models.PersonRecord{
-		Person: models.Person{
-			Name:                row.Name,
-			PreferredName:       row.PreferredName.String,
-			GivenName:           row.GivenName.String,
-			PreferredGivenName:  row.PreferredGivenName.String,
-			FamilyName:          row.FamilyName.String,
-			PreferredFamilyName: row.PreferredFamilyName.String,
-			HonorificPrefix:     row.HonorificPrefix.String,
-			Email:               row.Email.String,
-			Username:            row.Username.String,
-			Active:              row.Active,
-			Attributes:          row.Attributes,
-			Identifiers:         row.Identifiers,
-		},
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+		Name:                row.Name,
+		PreferredName:       row.PreferredName.String,
+		GivenName:           row.GivenName.String,
+		PreferredGivenName:  row.PreferredGivenName.String,
+		FamilyName:          row.FamilyName.String,
+		PreferredFamilyName: row.PreferredFamilyName.String,
+		HonorificPrefix:     row.HonorificPrefix.String,
+		Email:               row.Email.String,
+		Username:            row.Username.String,
+		Active:              row.Active,
+		Attributes:          row.Attributes,
+		Identifiers:         row.Identifiers,
+		CreatedAt:           row.CreatedAt.Time,
+		UpdatedAt:           row.UpdatedAt.Time,
 	}
 }
 

@@ -8,6 +8,12 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AddOrganization implements addOrganization operation.
+	//
+	// Upsert an organization.
+	//
+	// POST /add-organization
+	AddOrganization(ctx context.Context, req *AddOrganizationRequest) error
 	// AddPerson implements addPerson operation.
 	//
 	// Upsert a person.

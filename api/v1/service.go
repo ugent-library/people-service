@@ -93,6 +93,10 @@ func (s *Service) AddPerson(ctx context.Context, req *AddPersonRequest) error {
 	})
 }
 
+func (s *Service) AddOrganization(ctx context.Context, req *AddOrganizationRequest) error {
+	return nil
+}
+
 func personRecordToAPI(p *models.PersonRecord) PersonRecord {
 	attributes := make([]Attribute, len(p.Attributes))
 	for i, attr := range p.Attributes {

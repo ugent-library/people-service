@@ -11,6 +11,24 @@ func (s *ErrorStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// AddOrganizationOK is response for AddOrganization operation.
+type AddOrganizationOK struct{}
+
+// Ref: #/components/schemas/AddOrganizationRequest
+type AddOrganizationRequest struct {
+	Organization Organization `json:"organization"`
+}
+
+// GetOrganization returns the value of Organization.
+func (s *AddOrganizationRequest) GetOrganization() Organization {
+	return s.Organization
+}
+
+// SetOrganization sets the value of Organization.
+func (s *AddOrganizationRequest) SetOrganization(val Organization) {
+	s.Organization = val
+}
+
 // AddPersonOK is response for AddPerson operation.
 type AddPersonOK struct{}
 
@@ -221,6 +239,52 @@ func (o OptBool) Or(d bool) bool {
 	return d
 }
 
+// NewOptIdentifier returns new OptIdentifier with value set to v.
+func NewOptIdentifier(v Identifier) OptIdentifier {
+	return OptIdentifier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptIdentifier is optional Identifier.
+type OptIdentifier struct {
+	Value Identifier
+	Set   bool
+}
+
+// IsSet returns true if OptIdentifier was set.
+func (o OptIdentifier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptIdentifier) Reset() {
+	var v Identifier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptIdentifier) SetTo(v Identifier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptIdentifier) Get() (v Identifier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptIdentifier) Or(d Identifier) Identifier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -265,6 +329,43 @@ func (o OptString) Or(d string) string {
 		return v
 	}
 	return d
+}
+
+// Ref: #/components/schemas/Organization
+type Organization struct {
+	Name             string        `json:"name"`
+	Identifiers      []Identifier  `json:"identifiers"`
+	ParentIdentifier OptIdentifier `json:"parentIdentifier"`
+}
+
+// GetName returns the value of Name.
+func (s *Organization) GetName() string {
+	return s.Name
+}
+
+// GetIdentifiers returns the value of Identifiers.
+func (s *Organization) GetIdentifiers() []Identifier {
+	return s.Identifiers
+}
+
+// GetParentIdentifier returns the value of ParentIdentifier.
+func (s *Organization) GetParentIdentifier() OptIdentifier {
+	return s.ParentIdentifier
+}
+
+// SetName sets the value of Name.
+func (s *Organization) SetName(val string) {
+	s.Name = val
+}
+
+// SetIdentifiers sets the value of Identifiers.
+func (s *Organization) SetIdentifiers(val []Identifier) {
+	s.Identifiers = val
+}
+
+// SetParentIdentifier sets the value of ParentIdentifier.
+func (s *Organization) SetParentIdentifier(val OptIdentifier) {
+	s.ParentIdentifier = val
 }
 
 // Ref: #/components/schemas/Person

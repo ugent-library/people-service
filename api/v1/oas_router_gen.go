@@ -60,24 +60,60 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "add-person"
+			case 'a': // Prefix: "add-"
 				origElem := elem
-				if l := len("add-person"); len(elem) >= l && elem[0:l] == "add-person" {
+				if l := len("add-"); len(elem) >= l && elem[0:l] == "add-" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					// Leaf node.
-					switch r.Method {
-					case "POST":
-						s.handleAddPersonRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, "POST")
+					break
+				}
+				switch elem[0] {
+				case 'o': // Prefix: "organization"
+					origElem := elem
+					if l := len("organization"); len(elem) >= l && elem[0:l] == "organization" {
+						elem = elem[l:]
+					} else {
+						break
 					}
 
-					return
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "POST":
+							s.handleAddOrganizationRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "POST")
+						}
+
+						return
+					}
+
+					elem = origElem
+				case 'p': // Prefix: "person"
+					origElem := elem
+					if l := len("person"); len(elem) >= l && elem[0:l] == "person" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "POST":
+							s.handleAddPersonRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "POST")
+						}
+
+						return
+					}
+
+					elem = origElem
 				}
 
 				elem = origElem
@@ -218,28 +254,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "add-person"
+			case 'a': // Prefix: "add-"
 				origElem := elem
-				if l := len("add-person"); len(elem) >= l && elem[0:l] == "add-person" {
+				if l := len("add-"); len(elem) >= l && elem[0:l] == "add-" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					switch method {
-					case "POST":
-						// Leaf: AddPerson
-						r.name = "AddPerson"
-						r.summary = "Upsert a person"
-						r.operationID = "addPerson"
-						r.pathPattern = "/add-person"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
+					break
+				}
+				switch elem[0] {
+				case 'o': // Prefix: "organization"
+					origElem := elem
+					if l := len("organization"); len(elem) >= l && elem[0:l] == "organization" {
+						elem = elem[l:]
+					} else {
+						break
 					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "POST":
+							// Leaf: AddOrganization
+							r.name = "AddOrganization"
+							r.summary = "Upsert an organization"
+							r.operationID = "addOrganization"
+							r.pathPattern = "/add-organization"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+					elem = origElem
+				case 'p': // Prefix: "person"
+					origElem := elem
+					if l := len("person"); len(elem) >= l && elem[0:l] == "person" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "POST":
+							// Leaf: AddPerson
+							r.name = "AddPerson"
+							r.summary = "Upsert a person"
+							r.operationID = "addPerson"
+							r.pathPattern = "/add-person"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+					elem = origElem
 				}
 
 				elem = origElem

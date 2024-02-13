@@ -70,6 +70,23 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
+  "/add-organization":
+    post:
+      summary: Upsert an organization
+      description: Upsert an organization
+      operationId: addOrganization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddOrganizationRequest"
+        required: true
+      responses:
+        "200":
+          description: Success
+        default:
+          $ref: "#/components/responses/Error"
+
 security:
   - apiKey: []
 
@@ -120,6 +137,13 @@ components:
           $ref: "#/components/schemas/Person"
       required: [person]
 
+    AddOrganizationRequest:
+      type: object
+      properties:
+        organization:
+          $ref: "#/components/schemas/Organization"
+      required: [organization]
+
     Person:
       type: object
       properties:
@@ -162,31 +186,6 @@ components:
             $ref: "#/components/schemas/Identifier"
           minItems: 1
       required: [name, identifiers]
-
-    Attribute:
-      type: object
-      properties:
-        scope:
-          type: string
-          minLength: 1
-        key:
-          type: string
-          minLength: 1
-        value:
-          type: string
-          minLength: 1
-      required: [scope, key, value]
-
-    Identifier:
-      type: object
-      properties:
-        type:
-          type: string
-          minLength: 1
-        value:
-          type: string
-          minLength: 1
-      required: [type, value]
     
     PersonRecord:
       type: object
@@ -245,3 +244,43 @@ components:
           items:
             $ref: "#/components/schemas/PersonRecord"
       required: [hits]
+
+    Organization:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        identifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Identifier"
+          minItems: 1
+        parentIdentifier:
+          $ref: "#/components/schemas/Identifier"
+      required: [name, identifiers]
+
+    Attribute:
+      type: object
+      properties:
+        scope:
+          type: string
+          minLength: 1
+        key:
+          type: string
+          minLength: 1
+        value:
+          type: string
+          minLength: 1
+      required: [scope, key, value]
+
+    Identifier:
+      type: object
+      properties:
+        type:
+          type: string
+          minLength: 1
+        value:
+          type: string
+          minLength: 1
+      required: [type, value]
