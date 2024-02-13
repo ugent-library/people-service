@@ -155,8 +155,8 @@ func (idx *Index) ReindexPeople(ctx context.Context, iter PersonIter) error {
 		OnError: func(err error) {
 			idx.logger.ErrorContext(ctx, "index error", slog.Any("error", err))
 		},
-		OnIndexFailure: func(str string, err error) {
-			idx.logger.ErrorContext(ctx, "index failure", slog.String("doc", str), slog.Any("error", err))
+		OnIndexFailure: func(docID string, err error) {
+			idx.logger.ErrorContext(ctx, "index failure", slog.String("doc_id", docID), slog.Any("error", err))
 		},
 	})
 	if err != nil {
