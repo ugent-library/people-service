@@ -9,12 +9,6 @@ SELECT p.*, json_agg(json_build_object('type', i.type, 'value', i.value)) AS ide
 FROM people p, i WHERE p.id = i.person_id
 GROUP BY p.id;
 
--- name: GetAllPeople :many
-SELECT p.*, json_agg(json_build_object('type', pi.type, 'value', pi.value)) AS identifiers
-FROM people p
-LEFT JOIN  people_identifiers pi ON p.id = pi.person_id
-GROUP BY p.id;
-
 -- name: CreatePerson :one
 INSERT INTO people (
   name,

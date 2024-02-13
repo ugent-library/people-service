@@ -158,10 +158,6 @@ func (idx *Index) ReindexPeople(ctx context.Context, iter PersonIter) error {
 		OnIndexFailure: func(str string, err error) {
 			idx.logger.ErrorContext(ctx, "index failure", slog.String("doc", str), slog.Any("error", err))
 		},
-		OnIndexSuccess: func(str string) {
-			idx.logger.InfoContext(ctx, "index success", slog.String("doc", str))
-
-		},
 	})
 	if err != nil {
 		return err
