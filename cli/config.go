@@ -9,9 +9,9 @@ import (
 
 // Version info
 type Version struct {
-	Branch string `env:"SOURCE_BRANCH"`
-	Commit string `env:"SOURCE_COMMIT"`
-	Image  string `env:"IMAGE_NAME"`
+	Branch string `json:"branch" env:"SOURCE_BRANCH"`
+	Commit string `json:"commit" env:"SOURCE_COMMIT"`
+	Image  string `json:"image" env:"IMAGE_NAME"`
 }
 
 // Application configuration

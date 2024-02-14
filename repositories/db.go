@@ -57,7 +57,7 @@ const getPersonQuery = `
 WITH identifiers AS (
 	SELECT pi1.*
 	FROM person_identifiers pi1
-	LEFT JOIN  person_identifiers pi2 ON pi1.person_id = pi2.person_id
+	LEFT JOIN person_identifiers pi2 ON pi1.person_id = pi2.person_id
 	WHERE pi2.type = $1 AND pi2.value = $2	
 )
 SELECT p.*, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
@@ -70,4 +70,16 @@ SELECT p.*, json_agg(json_build_object('type', pi.type, 'value', pi.value)) AS i
 FROM people p
 LEFT JOIN person_identifiers pi ON p.id = pi.person_id
 GROUP BY p.id;
+`
+
+const getOrganizationQuery = `
+WITH identifiers AS (
+	SELECT oi1.*
+	FROM organization_identifiers oi1
+	LEFT JOIN organization_identifiers oi2 ON oi1.organization_id = oi2.organization_id
+	WHERE oi2.type = $1 AND oi2.value = $2
+)
+SELECT o.*, json_agg(json_build_object('type', i.type, 'value', i.value)) AS identifiers
+FROM organizations o, identifiers i WHERE o.id = i.organization_id
+GROUP BY o.id;
 `

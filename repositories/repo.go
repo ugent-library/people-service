@@ -272,3 +272,13 @@ func (r *Repo) DeactivatePeople(ctx context.Context) error {
 	t := time.Now().Add(-r.deactivationPeriod)
 	return r.queries.DeactivatePeople(ctx, pgtype.Timestamptz{Valid: true, Time: t})
 }
+
+func (r *Repo) AddOrganization(ctx context.Context, o *models.Organization) error {
+	tx, err := r.conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	return tx.Commit(ctx)
+}
