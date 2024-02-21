@@ -19,7 +19,7 @@ import (
 //go:embed *.json
 var settingsFS embed.FS
 
-type PersonIter func(context.Context, func(*models.PersonRecord) bool) error
+type Iter[T any] func(context.Context, func(T) bool) error
 
 type IndexConfig struct {
 	Conn      string
@@ -140,7 +140,7 @@ func (idx *Index) SearchPeople(ctx context.Context, q string) ([]*models.PersonR
 	return recs, nil
 }
 
-func (idx *Index) ReindexPeople(ctx context.Context, iter PersonIter) error {
+func (idx *Index) ReindexPeople(ctx context.Context, iter Iter[*models.PersonRecord]) error {
 	b, err := settingsFS.ReadFile("people_settings.json")
 	if err != nil {
 		return err
@@ -204,8 +204,28 @@ func newIndexPerson(p *models.PersonRecord) *indexPerson {
 	}
 
 	for i, id := range p.Identifiers {
-		ip.Identifiers[i] = id.Value
+		ip.Identifiers[i] = id.String()
 	}
 
 	return ip
+}
+
+type indexOrganization struct {
+	Names       []string                   `json:"names"`
+	Identifiers []string                   `json:"identifiers"`
+	Record      *models.OrganizationRecord `json:"record"`
+}
+
+func newIndexOrganization(o *models.OrganizationRecord) *indexOrganization {
+	io := &indexOrganization{
+		Names:       []string{o.Name},
+		Identifiers: make([]string, len(o.Identifiers)),
+		Record:      o,
+	}
+
+	for i, id := range o.Identifiers {
+		io.Identifiers[i] = id.String()
+	}
+
+	return io
 }

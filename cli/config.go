@@ -39,5 +39,5 @@ type Config struct {
 }
 
 func (c Config) Addr() string {
-	return fmt.Sprintf("%s:%d", config.Host, config.Port)
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
