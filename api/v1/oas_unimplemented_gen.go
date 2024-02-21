@@ -13,147 +13,39 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
-// AddOrganization implements AddOrganization operation.
+// AddOrganization implements addOrganization operation.
 //
-// Insert/update a single organization record.
+// Upsert an organization.
 //
 // POST /add-organization
-func (UnimplementedHandler) AddOrganization(ctx context.Context, req *Organization) (r *Organization, _ error) {
-	return r, ht.ErrNotImplemented
+func (UnimplementedHandler) AddOrganization(ctx context.Context, req *AddOrganizationRequest) error {
+	return ht.ErrNotImplemented
 }
 
-// AddPerson implements AddPerson operation.
+// AddPerson implements addPerson operation.
 //
-// Insert/update a single person record.
+// Upsert a person.
 //
 // POST /add-person
-func (UnimplementedHandler) AddPerson(ctx context.Context, req *Person) (r *Person, _ error) {
-	return r, ht.ErrNotImplemented
+func (UnimplementedHandler) AddPerson(ctx context.Context, req *AddPersonRequest) error {
+	return ht.ErrNotImplemented
 }
 
-// GetOrganization implements GetOrganization operation.
+// GetPerson implements getPerson operation.
 //
-// Get single organization record.
-//
-// POST /get-organization
-func (UnimplementedHandler) GetOrganization(ctx context.Context, req *GetOrganizationRequest) (r *Organization, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetOrganizations implements GetOrganizations operation.
-//
-// Get all organization records.
-//
-// POST /get-organizations
-func (UnimplementedHandler) GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (r *OrganizationPagedListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetOrganizationsById implements GetOrganizationsById operation.
-//
-// Get organization records by their ids.
-//
-// POST /get-organizations-by-id
-func (UnimplementedHandler) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (r *OrganizationListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetOrganizationsByIdentifier implements GetOrganizationsByIdentifier operation.
-//
-// Get organization records by one of the extra identifiers.
-//
-// POST /get-organizations-by-identifier
-func (UnimplementedHandler) GetOrganizationsByIdentifier(ctx context.Context, req *GetOrganizationsByIdentifierRequest) (r *OrganizationListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetPeople implements GetPeople operation.
-//
-// Get all person records.
-//
-// POST /get-people
-func (UnimplementedHandler) GetPeople(ctx context.Context, req *GetPeopleRequest) (r *PersonPagedListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetPeopleById implements GetPeopleById operation.
-//
-// Retrieve person records by their ids.
-//
-// POST /get-people-by-id
-func (UnimplementedHandler) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (r *PersonListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetPeopleByIdentifier implements GetPeopleByIdentifier operation.
-//
-// Retrieve person records by one of the extra identifiers.
-//
-// POST /get-people-by-identifier
-func (UnimplementedHandler) GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (r *PersonListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GetPerson implements GetPerson operation.
-//
-// Retrieve a single person record.
+// Get a person.
 //
 // POST /get-person
-func (UnimplementedHandler) GetPerson(ctx context.Context, req *GetPersonRequest) (r *Person, _ error) {
+func (UnimplementedHandler) GetPerson(ctx context.Context, req *GetPersonRequest) (r GetPersonRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
-// SetPersonOrcid implements SetPersonOrcid operation.
+// SearchPeople implements searchPeople operation.
 //
-// Update person ORCID.
+// Search people.
 //
-// POST /set-person-orcid
-func (UnimplementedHandler) SetPersonOrcid(ctx context.Context, req *SetPersonOrcidRequest) (r *Person, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// SetPersonRole implements SetPersonRole operation.
-//
-// Update person role.
-//
-// POST /set-person-role
-func (UnimplementedHandler) SetPersonRole(ctx context.Context, req *SetPersonRoleRequest) (r *Person, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// SetPersonSettings implements SetPersonSettings operation.
-//
-// Update person settings.
-//
-// POST /set-person-settings
-func (UnimplementedHandler) SetPersonSettings(ctx context.Context, req *SetPersonSettingsRequest) (r *Person, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// SetPersonToken implements SetPersonToken operation.
-//
-// Update person tokens.
-//
-// POST /set-person-token
-func (UnimplementedHandler) SetPersonToken(ctx context.Context, req *SetPersonTokenRequest) (r *Person, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// SuggestOrganizations implements SuggestOrganizations operation.
-//
-// Search on organization records.
-//
-// POST /suggest-organizations
-func (UnimplementedHandler) SuggestOrganizations(ctx context.Context, req *SuggestOrganizationsRequest) (r *OrganizationListResponse, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// SuggestPeople implements SuggestPeople operation.
-//
-// Search on person records.
-//
-// POST /suggest-people
-func (UnimplementedHandler) SuggestPeople(ctx context.Context, req *SuggestPeopleRequest) (r *PersonListResponse, _ error) {
+// POST /search-people
+func (UnimplementedHandler) SearchPeople(ctx context.Context, req *SearchPeopleRequest) (r *PersonHits, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

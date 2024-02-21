@@ -1,32 +1,43 @@
 package cli
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
-type ConfigDb struct {
-	Url    string `env:"URL" envDefault:"postgres://people:people@localhost:5432/authority?sslmode=disable"`
-	AesKey string `env:"AES_KEY,notEmpty"`
+//go:generate go run github.com/g4s8/envdoc@v0.1.2 --output ../CONFIG.md --all
+
+// Version info
+type Version struct {
+	Branch string `json:"branch" env:"SOURCE_BRANCH"`
+	Commit string `json:"commit" env:"SOURCE_COMMIT"`
+	Image  string `json:"image" env:"IMAGE_NAME"`
 }
 
-type ConfigApi struct {
-	Host string `env:"HOST" envDefault:"localhost"`
-	Port int    `env:"PORT" envDefault:"3999"`
-	Key  string `env:"KEY,notEmpty"`
-}
-
-type ConfigLdap struct {
-	Url      string `env:"URL,notEmpty"`
-	Username string `env:"USERNAME,notEmpty"`
-	Password string `env:"PASSWORD,notEmpty"`
-}
-
+// Application configuration
 type Config struct {
-	Production bool       `env:"PRODUCTION"`
-	Db         ConfigDb   `envPrefix:"DB_"`
-	Api        ConfigApi  `envPrefix:"API_"`
-	Ldap       ConfigLdap `envPrefix:"LDAP_"`
-	IPRanges   string     `env:"IP_RANGES"`
+	// Env must be local, development, test or production
+	Env    string `env:"ENV" envDefault:"production"`
+	Host   string `env:"HOST"`
+	Port   int    `env:"PORT" envDefault:"3000"`
+	APIKey string `env:"API_KEY,notEmpty"`
+	// Repository configuration
+	Repo struct {
+		// Database connection string
+		Conn               string        `env:"CONN,notEmpty"`
+		DeactivationPeriod time.Duration `env:"DEACTIVATION_PERIOD" envDefault:"8h"`
+	} `envPrefix:"REPO_"`
+	// Search index configuration
+	Index struct {
+		// Connection string
+		Conn string `env:"CONN,notEmpty"`
+		// Index Name
+		Name string `env:"NAME,notEmpty"`
+		// Index retention
+		Retention int `env:"RETENTION" envDefault:"5"`
+	} `envPrefix:"INDEX_"`
 }
 
-func (ca ConfigApi) Addr() string {
-	return fmt.Sprintf("%s:%d", ca.Host, ca.Port)
+func (c Config) Addr() string {
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

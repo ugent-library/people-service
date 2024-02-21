@@ -8,102 +8,30 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
-	// AddOrganization implements AddOrganization operation.
+	// AddOrganization implements addOrganization operation.
 	//
-	// Insert/update a single organization record.
+	// Upsert an organization.
 	//
 	// POST /add-organization
-	AddOrganization(ctx context.Context, req *Organization) (*Organization, error)
-	// AddPerson implements AddPerson operation.
+	AddOrganization(ctx context.Context, req *AddOrganizationRequest) error
+	// AddPerson implements addPerson operation.
 	//
-	// Insert/update a single person record.
+	// Upsert a person.
 	//
 	// POST /add-person
-	AddPerson(ctx context.Context, req *Person) (*Person, error)
-	// GetOrganization implements GetOrganization operation.
+	AddPerson(ctx context.Context, req *AddPersonRequest) error
+	// GetPerson implements getPerson operation.
 	//
-	// Get single organization record.
-	//
-	// POST /get-organization
-	GetOrganization(ctx context.Context, req *GetOrganizationRequest) (*Organization, error)
-	// GetOrganizations implements GetOrganizations operation.
-	//
-	// Get all organization records.
-	//
-	// POST /get-organizations
-	GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationPagedListResponse, error)
-	// GetOrganizationsById implements GetOrganizationsById operation.
-	//
-	// Get organization records by their ids.
-	//
-	// POST /get-organizations-by-id
-	GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error)
-	// GetOrganizationsByIdentifier implements GetOrganizationsByIdentifier operation.
-	//
-	// Get organization records by one of the extra identifiers.
-	//
-	// POST /get-organizations-by-identifier
-	GetOrganizationsByIdentifier(ctx context.Context, req *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error)
-	// GetPeople implements GetPeople operation.
-	//
-	// Get all person records.
-	//
-	// POST /get-people
-	GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonPagedListResponse, error)
-	// GetPeopleById implements GetPeopleById operation.
-	//
-	// Retrieve person records by their ids.
-	//
-	// POST /get-people-by-id
-	GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error)
-	// GetPeopleByIdentifier implements GetPeopleByIdentifier operation.
-	//
-	// Retrieve person records by one of the extra identifiers.
-	//
-	// POST /get-people-by-identifier
-	GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (*PersonListResponse, error)
-	// GetPerson implements GetPerson operation.
-	//
-	// Retrieve a single person record.
+	// Get a person.
 	//
 	// POST /get-person
-	GetPerson(ctx context.Context, req *GetPersonRequest) (*Person, error)
-	// SetPersonOrcid implements SetPersonOrcid operation.
+	GetPerson(ctx context.Context, req *GetPersonRequest) (GetPersonRes, error)
+	// SearchPeople implements searchPeople operation.
 	//
-	// Update person ORCID.
+	// Search people.
 	//
-	// POST /set-person-orcid
-	SetPersonOrcid(ctx context.Context, req *SetPersonOrcidRequest) (*Person, error)
-	// SetPersonRole implements SetPersonRole operation.
-	//
-	// Update person role.
-	//
-	// POST /set-person-role
-	SetPersonRole(ctx context.Context, req *SetPersonRoleRequest) (*Person, error)
-	// SetPersonSettings implements SetPersonSettings operation.
-	//
-	// Update person settings.
-	//
-	// POST /set-person-settings
-	SetPersonSettings(ctx context.Context, req *SetPersonSettingsRequest) (*Person, error)
-	// SetPersonToken implements SetPersonToken operation.
-	//
-	// Update person tokens.
-	//
-	// POST /set-person-token
-	SetPersonToken(ctx context.Context, req *SetPersonTokenRequest) (*Person, error)
-	// SuggestOrganizations implements SuggestOrganizations operation.
-	//
-	// Search on organization records.
-	//
-	// POST /suggest-organizations
-	SuggestOrganizations(ctx context.Context, req *SuggestOrganizationsRequest) (*OrganizationListResponse, error)
-	// SuggestPeople implements SuggestPeople operation.
-	//
-	// Search on person records.
-	//
-	// POST /suggest-people
-	SuggestPeople(ctx context.Context, req *SuggestPeopleRequest) (*PersonListResponse, error)
+	// POST /search-people
+	SearchPeople(ctx context.Context, req *SearchPeopleRequest) (*PersonHits, error)
 	// NewError creates *ErrorStatusCode from error returned by handler.
 	//
 	// Used for common default response.

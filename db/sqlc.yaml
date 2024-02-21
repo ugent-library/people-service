@@ -1,0 +1,16 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "query.sql"
+    schema: "migrations"
+    gen:
+      go:
+        package: "db"
+        out: "."
+        sql_package: "pgx/v5"
+        overrides:
+        - column: "people.attributes"
+          go_type:
+            import: "github.com/ugent-library/people-service/models"
+            type: "Attribute"
+            slice: true

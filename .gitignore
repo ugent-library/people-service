@@ -19,17 +19,8 @@
 node_modules
 !.gitkeep
 
-# Live reloading
-/reflex.conf
-
 # Config
-/.env
+.env
 
-# build file
-/people-service
-
-/atlas.hcl
-/tern.conf
-
-# docker
-tmp
+# Local workspace
+go.work*

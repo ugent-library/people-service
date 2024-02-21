@@ -1,58 +1,69 @@
 module github.com/ugent-library/people-service
 
-go 1.21.3
+go 1.21.6
 
 require (
 	github.com/caarlos0/env/v8 v8.0.0
-	github.com/go-chi/chi/v5 v5.0.10
-	github.com/go-faster/errors v0.7.0
+	github.com/go-chi/chi/v5 v5.0.11
+	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.1.0
-	github.com/go-ldap/ldap/v3 v3.4.6
-	github.com/google/uuid v1.4.0
-	github.com/jackc/pgx/v5 v5.5.0
+	github.com/google/uuid v1.6.0
+	github.com/jackc/pgx/v5 v5.5.3
 	github.com/joho/godotenv v1.5.1
-	github.com/jpillora/ipfilter v1.2.9
-	github.com/ogen-go/ogen v0.78.0
-	github.com/oklog/ulid/v2 v2.1.0
+	github.com/ogen-go/ogen v0.81.2
 	github.com/ory/graceful v0.1.3
-	github.com/samber/lo v1.38.1
+	github.com/samber/slog-chi v1.9.1
 	github.com/spf13/cobra v1.8.0
-	github.com/ugent-library/crypt v0.0.0-20230630063634-8c02106fd40e
-	github.com/ugent-library/zaphttp v0.0.0-20231026141151-4cbb4e2eb87a
-	go.opentelemetry.io/otel v1.20.0
-	go.opentelemetry.io/otel/metric v1.20.0
-	go.opentelemetry.io/otel/trace v1.20.0
+	go.opentelemetry.io/otel v1.22.0
+	go.opentelemetry.io/otel/metric v1.22.0
+	go.opentelemetry.io/otel/trace v1.22.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.26.0
 )
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
+	github.com/oklog/ulid/v2 v2.1.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.0.18 // indirect
+	github.com/sethvargo/go-retry v0.2.4 // indirect
+	github.com/vearutop/statigz v1.4.0 // indirect
+	go.uber.org/zap v1.26.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
+	google.golang.org/grpc v1.61.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
+)
+
+require (
+	github.com/alexliesenfeld/health v0.8.0
 	github.com/dlclark/regexp2 v1.10.0 // indirect
+	github.com/elastic/go-elasticsearch/v6 v6.8.10
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/georgysavva/scany/v2 v2.1.0
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/go-faster/yaml v0.4.6 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/phuslu/iploc v1.0.20230201 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pressly/goose/v3 v3.18.0
+	github.com/riverqueue/river v0.0.18
+	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.0.18
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.0.18
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	github.com/swaggest/swgui v1.8.0
+	github.com/ugent-library/httpx v0.0.0-20231026122034-e9de0b29458b
+	github.com/ugent-library/index v0.0.0-20240208101504-240e390f8d3d
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

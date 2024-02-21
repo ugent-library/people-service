@@ -2,392 +2,26 @@ package api
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	"github.com/go-faster/errors"
+	"github.com/ugent-library/people-service/indexes"
 	"github.com/ugent-library/people-service/models"
+	"github.com/ugent-library/people-service/repositories"
 )
 
 type Service struct {
-	repository models.Repository
+	repo  *repositories.Repo
+	index *indexes.Index
 }
 
-func NewService(repository models.Repository) *Service {
+func NewService(repo *repositories.Repo, index *indexes.Index) *Service {
 	return &Service{
-		repository: repository,
+		repo:  repo,
+		index: index,
 	}
-}
-
-func (s *Service) GetPerson(ctx context.Context, req *GetPersonRequest) (*Person, error) {
-	person, err := s.repository.GetPerson(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) GetPeopleById(ctx context.Context, req *GetPeopleByIdRequest) (*PersonListResponse, error) {
-	people, err := s.repository.GetPeopleById(ctx, req.ID...)
-	if err != nil {
-		return nil, err
-	}
-	res := &PersonListResponse{
-		Data: make([]Person, 0, len(people)),
-	}
-	for _, person := range people {
-		res.Data = append(res.Data, *mapToExternalPerson(person))
-	}
-	return res, nil
-}
-
-func (s *Service) GetPeopleByIdentifier(ctx context.Context, req *GetPeopleByIdentifierRequest) (*PersonListResponse, error) {
-	urns := make([]*models.URN, 0, len(req.Identifier))
-	for _, id := range req.Identifier {
-		urn, err := models.ParseURN(id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
-		}
-		urns = append(urns, urn)
-	}
-	people, err := s.repository.GetPeopleByIdentifier(ctx, urns...)
-	if err != nil {
-		return nil, err
-	}
-	res := &PersonListResponse{
-		Data: make([]Person, 0, len(people)),
-	}
-	for _, person := range people {
-		res.Data = append(res.Data, *mapToExternalPerson(person))
-	}
-	return res, nil
-}
-
-func (s *Service) GetPeople(ctx context.Context, req *GetPeopleRequest) (*PersonPagedListResponse, error) {
-	var people []*models.Person
-	var err error
-	var cursor string
-
-	if req.Cursor.Value != "" {
-		people, cursor, err = s.repository.GetMorePeople(ctx, req.Cursor.Value)
-	} else {
-		people, cursor, err = s.repository.GetPeople(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	res := &PersonPagedListResponse{
-		Data: make([]Person, 0, len(people)),
-	}
-	if cursor != "" {
-		res.Cursor = NewOptString(cursor)
-	}
-	for _, person := range people {
-		res.Data = append(res.Data, *mapToExternalPerson(person))
-	}
-
-	return res, nil
-}
-
-func (s *Service) SuggestPeople(ctx context.Context, req *SuggestPeopleRequest) (*PersonListResponse, error) {
-	people, err := s.repository.SuggestPeople(ctx, models.PersonSuggestParams{
-		Query:  req.Query,
-		Active: req.Active,
-		Limit:  uint32(req.Limit.Value),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	res := &PersonListResponse{
-		Data: make([]Person, 0, len(people)),
-	}
-	for _, person := range people {
-		res.Data = append(res.Data, *mapToExternalPerson(person))
-	}
-
-	return res, nil
-}
-
-func (s *Service) SetPersonOrcid(ctx context.Context, req *SetPersonOrcidRequest) (*Person, error) {
-	if err := s.repository.SetPersonOrcid(ctx, req.ID, req.Orcid); err != nil {
-		return nil, err
-	}
-	person, err := s.repository.GetPerson(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) SetPersonToken(ctx context.Context, req *SetPersonTokenRequest) (*Person, error) {
-	if err := s.repository.SetPersonToken(ctx, req.ID, req.Type, req.Token); err != nil {
-		return nil, err
-	}
-	person, err := s.repository.GetPerson(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) SetPersonRole(ctx context.Context, req *SetPersonRoleRequest) (*Person, error) {
-	if err := s.repository.SetPersonRole(ctx, req.ID, req.Role); err != nil {
-		return nil, err
-	}
-	person, err := s.repository.GetPerson(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) SetPersonSettings(ctx context.Context, req *SetPersonSettingsRequest) (*Person, error) {
-	if req.Settings == nil {
-		return nil, fmt.Errorf("%w: attribute settings is missing in request body", models.ErrMissingArgument)
-	}
-	if err := s.repository.SetPersonSettings(ctx, req.ID, req.Settings); err != nil {
-		return nil, err
-	}
-	person, err := s.repository.GetPerson(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) GetOrganization(ctx context.Context, req *GetOrganizationRequest) (*Organization, error) {
-	org, err := s.repository.GetOrganization(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapToExternalOrganization(org), nil
-}
-
-func (s *Service) GetOrganizationsByIdentifier(ctx context.Context, req *GetOrganizationsByIdentifierRequest) (*OrganizationListResponse, error) {
-	urns := make([]*models.URN, 0, len(req.Identifier))
-	for _, id := range req.Identifier {
-		urn, err := models.ParseURN(id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", id, models.ErrInvalidURN)
-		}
-		urns = append(urns, urn)
-	}
-	orgs, err := s.repository.GetOrganizationsByIdentifier(ctx, urns...)
-	if err != nil {
-		return nil, err
-	}
-	res := &OrganizationListResponse{
-		Data: make([]Organization, 0, len(orgs)),
-	}
-	for _, org := range orgs {
-		res.Data = append(res.Data, *mapToExternalOrganization(org))
-	}
-	return res, nil
-}
-
-func (s *Service) GetOrganizationsById(ctx context.Context, req *GetOrganizationsByIdRequest) (*OrganizationListResponse, error) {
-	orgs, err := s.repository.GetOrganizationsById(ctx, req.ID...)
-	if err != nil {
-		return nil, err
-	}
-	res := &OrganizationListResponse{
-		Data: make([]Organization, 0, len(orgs)),
-	}
-	for _, org := range orgs {
-		res.Data = append(res.Data, *mapToExternalOrganization(org))
-	}
-	return res, nil
-}
-
-func (s *Service) GetOrganizations(ctx context.Context, req *GetOrganizationsRequest) (*OrganizationPagedListResponse, error) {
-	var organizations []*models.Organization
-	var err error
-	var cursor string
-
-	if req.Cursor.Value != "" {
-		organizations, cursor, err = s.repository.GetMoreOrganizations(ctx, req.Cursor.Value)
-	} else {
-		organizations, cursor, err = s.repository.GetOrganizations(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	res := &OrganizationPagedListResponse{
-		Data: make([]Organization, 0, len(organizations)),
-	}
-	if cursor != "" {
-		res.Cursor = NewOptString(cursor)
-	}
-	for _, org := range organizations {
-		res.Data = append(res.Data, *mapToExternalOrganization(org))
-	}
-
-	return res, nil
-}
-
-func (s *Service) SuggestOrganizations(ctx context.Context, req *SuggestOrganizationsRequest) (*OrganizationListResponse, error) {
-	orgs, err := s.repository.SuggestOrganizations(ctx, models.OrganizationSuggestParams{
-		Query: req.Query,
-		Limit: uint32(req.Limit.Value),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	res := &OrganizationListResponse{
-		Data: make([]Organization, 0, len(orgs)),
-	}
-	for _, org := range orgs {
-		res.Data = append(res.Data, *mapToExternalOrganization(org))
-	}
-
-	return res, nil
-}
-
-func (s *Service) AddPerson(ctx context.Context, p *Person) (*Person, error) {
-	var person *models.Person
-
-	if p.ID.Value != "" {
-		oldPerson, err := s.repository.GetPerson(ctx, p.ID.Value)
-		if errors.Is(err, models.ErrNotFound) {
-			return nil, fmt.Errorf("cannot find person record %s to update", p.ID.Value)
-		} else if err != nil {
-			return nil, err
-		}
-		person = oldPerson
-	} else {
-		person = models.NewPerson()
-	}
-
-	person.Active = p.Active.Value
-	person.BirthDate = p.BirthDate.Value
-	person.SetEmail(p.Email.Value)
-	person.GivenName = p.GivenName.Value
-	person.FamilyName = p.FamilyName.Value
-	person.Name = p.Name.Value
-	person.SetJobCategory(p.JobCategory...)
-	person.SetObjectClass(p.ObjectClass...)
-	person.ClearToken()
-	for typ, token := range p.Token.Value {
-		person.SetToken(typ, token)
-	}
-	person.PreferredGivenName = p.PreferredGivenName.Value
-	person.PreferredFamilyName = p.PreferredFamilyName.Value
-	person.SetRole(p.Role...)
-	person.Settings = p.Settings.Value
-	person.HonorificPrefix = p.HonorificPrefix.Value
-
-	ids := make([]*models.URN, 0, len(p.Identifier))
-	for _, identifier := range p.Identifier {
-		id, err := models.ParseURN(identifier)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", identifier, models.ErrInvalidURN)
-		}
-		ids = append(ids, id)
-	}
-	person.SetIdentifier(ids...)
-
-	orgMembers := []*models.OrganizationMember{}
-	for _, orgMember := range p.Organization {
-		newOrgMember := models.NewOrganizationMember(orgMember.ID)
-		orgMembers = append(orgMembers, newOrgMember)
-	}
-	person.SetOrganizationMember(orgMembers...)
-
-	if newPerson, err := s.repository.SavePerson(ctx, person); err != nil {
-		return nil, err
-	} else {
-		person = newPerson
-	}
-
-	return mapToExternalPerson(person), nil
-}
-
-func (s *Service) AddOrganization(ctx context.Context, o *Organization) (*Organization, error) {
-	var org *models.Organization
-
-	if o.ID.Value != "" {
-		oldOrg, err := s.repository.GetOrganization(ctx, o.ID.Value)
-		if errors.Is(err, models.ErrNotFound) {
-			return nil, fmt.Errorf("cannot find organization record \"%s\" to update", o.ID.Value)
-		} else if err != nil {
-			return nil, err
-		}
-		org = oldOrg
-	} else {
-		org = models.NewOrganization()
-	}
-
-	org.Acronym = o.Acronym.Value
-	org.NameDut = o.NameDut.Value
-	org.NameEng = o.NameEng.Value
-	parents := []*models.OrganizationParent{}
-	for _, parent := range o.Parent {
-		from := parent.From
-		op := models.OrganizationParent{
-			ID:   parent.ID,
-			From: &from,
-		}
-		if parent.Until.Set {
-			until := parent.Until.Value
-			op.Until = &until
-		}
-		parents = append(parents, &op)
-	}
-	org.SetParent(parents...)
-	org.Type = o.Type.Value
-
-	ids := make([]*models.URN, 0, len(o.Identifier))
-	for _, identifier := range o.Identifier {
-		id, err := models.ParseURN(identifier)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", identifier, models.ErrInvalidURN)
-		}
-		ids = append(ids, id)
-	}
-	org.SetIdentifier(ids...)
-
-	if newOrg, err := s.repository.SaveOrganization(ctx, org); err != nil {
-		return nil, err
-	} else {
-		org = newOrg
-	}
-
-	return mapToExternalOrganization(org), nil
 }
 
 func (s *Service) NewError(ctx context.Context, err error) *ErrorStatusCode {
-	if errors.Is(err, models.ErrNotFound) {
-		return &ErrorStatusCode{
-			StatusCode: 404,
-			Response: Error{
-				Code:    404,
-				Message: err.Error(),
-			},
-		}
-	}
-	if errors.Is(err, models.ErrMissingArgument) {
-		return &ErrorStatusCode{
-			StatusCode: 400,
-			Response: Error{
-				Code:    400,
-				Message: err.Error(),
-			},
-		}
-	}
-	if errors.Is(err, models.ErrInvalidReference) {
-		return &ErrorStatusCode{
-			StatusCode: 400,
-			Response: Error{
-				Code:    400,
-				Message: err.Error(),
-			},
-		}
-	}
-
 	return &ErrorStatusCode{
 		StatusCode: 500,
 		Response: Error{
@@ -397,97 +31,96 @@ func (s *Service) NewError(ctx context.Context, err error) *ErrorStatusCode {
 	}
 }
 
-func mapToExternalPerson(person *models.Person) *Person {
-	p := &Person{}
-	p.ID = NewOptString(person.ID)
-	p.Active = NewOptBool(person.Active)
-	if person.BirthDate != "" {
-		p.BirthDate = NewOptString(person.BirthDate)
-	}
-	p.DateCreated = NewOptDateTime(*person.DateCreated)
-	p.DateUpdated = NewOptDateTime(*person.DateUpdated)
-	if person.Email != "" {
-		p.Email = NewOptString(person.Email)
-	}
-	if person.GivenName != "" {
-		p.GivenName = NewOptString(person.GivenName)
-	}
-	if person.FamilyName != "" {
-		p.FamilyName = NewOptString(person.FamilyName)
-	}
-	if person.Name != "" {
-		p.Name = NewOptString(person.Name)
-	}
-	if person.PreferredGivenName != "" {
-		p.PreferredGivenName = NewOptString(person.PreferredGivenName)
-	}
-	if person.PreferredFamilyName != "" {
-		p.PreferredFamilyName = NewOptString(person.PreferredFamilyName)
-	}
-	p.JobCategory = append(p.JobCategory, person.JobCategory...)
-	p.ObjectClass = append(p.ObjectClass, person.ObjectClass...)
-	if len(person.Token) > 0 {
-		p.Token = NewOptStringMap(person.Token)
-	}
-	for _, orgMember := range person.Organization {
-		externalOrgMember := OrganizationMember{
-			ID:          orgMember.ID,
-			DateCreated: NewOptDateTime(*orgMember.DateCreated),
-			DateUpdated: NewOptDateTime(*orgMember.DateUpdated),
+func (s *Service) GetPerson(ctx context.Context, req *GetPersonRequest) (GetPersonRes, error) {
+	p, err := s.repo.GetPerson(ctx, models.Identifier(req.Identifier))
+	if errors.Is(err, repositories.ErrNotFound) {
+		return nil, &ErrorStatusCode{
+			StatusCode: 404,
+			Response: Error{
+				Code:    404,
+				Message: "Person not found",
+			},
 		}
-		p.Organization = append(p.Organization, externalOrgMember)
 	}
-	p.Identifier = make([]string, 0, len(person.Identifier))
-	for _, id := range person.Identifier {
-		p.Identifier = append(p.Identifier, id.String())
+	if err != nil {
+		return nil, err
 	}
 
-	p.Role = append(p.Role, person.Role...)
-	if person.Settings != nil {
-		pSettings := PersonSettings{}
-		for k, v := range person.Settings {
-			pSettings[k] = v
-		}
-		p.Settings = NewOptPersonSettings(pSettings)
-	}
-	if person.HonorificPrefix != "" {
-		p.HonorificPrefix = NewOptString(person.HonorificPrefix)
-	}
+	res := personRecordToAPI(p)
 
-	return p
+	return &res, nil
 }
 
-func mapToExternalOrganization(org *models.Organization) *Organization {
-	o := &Organization{}
-	o.ID = NewOptString(org.ID)
-	o.DateCreated = NewOptDateTime(*org.DateCreated)
-	o.DateUpdated = NewOptDateTime(*org.DateUpdated)
-	if org.Acronym != "" {
-		o.Acronym = NewOptString(org.Acronym)
+func (s *Service) SearchPeople(ctx context.Context, req *SearchPeopleRequest) (*PersonHits, error) {
+	hits, err := s.index.SearchPeople(ctx, req.Query)
+	if err != nil {
+		return nil, err
 	}
-	if org.NameDut != "" {
-		o.NameDut = NewOptString(org.NameDut)
-	}
-	if org.NameEng != "" {
-		o.NameEng = NewOptString(org.NameEng)
-	}
-	o.Identifier = make([]string, 0, len(org.Identifier))
-	for _, id := range org.Identifier {
-		o.Identifier = append(o.Identifier, id.String())
-	}
-	for _, organizationParent := range org.Parent {
-		op := OrganizationParent{
-			ID:          organizationParent.ID,
-			DateCreated: NewOptDateTime(*organizationParent.DateCreated),
-			DateUpdated: NewOptDateTime(*organizationParent.DateUpdated),
-			From:        *organizationParent.From,
-		}
-		if organizationParent.Until != nil {
-			op.Until = NewOptDateTime(*organizationParent.Until)
-		}
-		o.Parent = append(o.Parent, op)
-	}
-	o.Type = NewOptString(org.Type)
 
-	return o
+	res := &PersonHits{Hits: make([]PersonRecord, len(hits))}
+	for i, p := range hits {
+		res.Hits[i] = personRecordToAPI(p)
+	}
+
+	return res, nil
+}
+
+func (s *Service) AddPerson(ctx context.Context, req *AddPersonRequest) error {
+	p := req.Person
+
+	attributes := make([]models.Attribute, len(p.Attributes))
+	for i, attr := range p.Attributes {
+		attributes[i] = models.Attribute(attr)
+	}
+	identifiers := make([]models.Identifier, len(p.Identifiers))
+	for i, id := range p.Identifiers {
+		identifiers[i] = models.Identifier(id)
+	}
+
+	return s.repo.AddPerson(ctx, &models.Person{
+		Name:                p.Name,
+		PreferredName:       p.PreferredName.Value,
+		GivenName:           p.GivenName.Value,
+		PreferredGivenName:  p.PreferredGivenName.Value,
+		FamilyName:          p.FamilyName.Value,
+		PreferredFamilyName: p.PreferredFamilyName.Value,
+		HonorificPrefix:     p.HonorificPrefix.Value,
+		Email:               p.Email.Value,
+		Active:              p.Active.Value,
+		Username:            p.Username.Value,
+		Attributes:          attributes,
+		Identifiers:         identifiers,
+	})
+}
+
+func (s *Service) AddOrganization(ctx context.Context, req *AddOrganizationRequest) error {
+	return nil
+}
+
+func personRecordToAPI(p *models.PersonRecord) PersonRecord {
+	attributes := make([]Attribute, len(p.Attributes))
+	for i, attr := range p.Attributes {
+		attributes[i] = Attribute(attr)
+	}
+	identifiers := make([]Identifier, len(p.Identifiers))
+	for i, id := range p.Identifiers {
+		identifiers[i] = Identifier(id)
+	}
+
+	return PersonRecord{
+		Name:                p.Name,
+		PreferredName:       OptString{Set: p.PreferredName != "", Value: p.PreferredName},
+		GivenName:           OptString{Set: p.GivenName != "", Value: p.GivenName},
+		PreferredGivenName:  OptString{Set: p.PreferredGivenName != "", Value: p.PreferredGivenName},
+		FamilyName:          OptString{Set: p.FamilyName != "", Value: p.FamilyName},
+		PreferredFamilyName: OptString{Set: p.PreferredFamilyName != "", Value: p.PreferredFamilyName},
+		HonorificPrefix:     OptString{Set: p.HonorificPrefix != "", Value: p.HonorificPrefix},
+		Email:               OptString{Set: p.Email != "", Value: p.Email},
+		Username:            OptString{Set: p.Username != "", Value: p.Username},
+		Active:              p.Active,
+		Attributes:          attributes,
+		Identifiers:         identifiers,
+		CreatedAt:           p.CreatedAt,
+		UpdatedAt:           p.UpdatedAt,
+	}
 }

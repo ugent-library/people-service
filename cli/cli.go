@@ -1,36 +1,31 @@
 package cli
 
 import (
-	"github.com/caarlos0/env/v8"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
+	"log/slog"
+	"os"
 
-	// load .env file if present
+	"github.com/caarlos0/env/v8"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/spf13/cobra"
 )
 
 var (
-	config  Config
 	version Version
+	config  Config
+	logger  *slog.Logger
+
+	rootCmd = &cobra.Command{
+		Use:   "people",
+		Short: "people CLI",
+	}
 )
-
-var logger *zap.SugaredLogger
-
-var rootCmd = &cobra.Command{
-	Use: "people-service",
-}
 
 func init() {
 	cobra.OnInitialize(initVersion, initConfig, initLogger)
-	cobra.OnFinalize(func() {
-		logger.Sync()
-	})
 }
 
 func initConfig() {
-	cobra.CheckErr(env.ParseWithOptions(&config, env.Options{
-		Prefix: "PEOPLE_",
-	}))
+	cobra.CheckErr(env.ParseWithOptions(&config, env.Options{Prefix: "PEOPLE_"}))
 }
 
 func initVersion() {
@@ -38,17 +33,13 @@ func initVersion() {
 }
 
 func initLogger() {
-	var l *zap.Logger
-	var e error
-	if config.Production {
-		l, e = zap.NewProduction()
+	if config.Env == "local" {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	} else {
-		l, e = zap.NewDevelopment()
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
-	cobra.CheckErr(e)
-	logger = l.Sugar()
 }
 
-func Execute() {
-	cobra.CheckErr(rootCmd.Execute())
+func Run() error {
+	return rootCmd.Execute()
 }
